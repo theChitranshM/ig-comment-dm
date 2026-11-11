@@ -1,5 +1,6 @@
 // Pure-ish logic, importable from Node tests (no cloudflare:* imports).
 import defaultConfig from "./config.js";
+import { normalizeConfig, runsOn, coveredSince } from "./automations.js";
 
 const enc = new TextEncoder();
 const DAY = 86_400_000;
@@ -158,7 +159,7 @@ let configCache = null;
 export async function getConfig(env) {
   if (configCache && configCache.until > Date.now()) return configCache.value;
   const kv = await env.KV.get("config", "json").catch(() => null);
-  const value = kv ?? defaultConfig;
+  const value = normalizeConfig(kv ?? defaultConfig); // v1 rules are migrated on read
   configCache = { value, until: Date.now() + 60_000 };
   return value;
 }
@@ -253,25 +254,30 @@ export function ledger(env) {
 
 // ---------- the decision: should this comment fire? ----------
 
-export function classify(c, config, env, { backfill = false } = {}) {
+export function classify(c, config, env, { backfill = false, onlyAutomation = null } = {}) {
   const selfIds = [env.IG_ID, c.accountId].filter(Boolean).map(String);
   if (!c.fromId && !c.fromUsername) return { action: "skip", reason: "no_sender" };
   if (c.fromId && selfIds.includes(c.fromId)) return { action: "skip", reason: "self" };
   if (env.IG_USERNAME && c.fromUsername && c.fromUsername.toLowerCase() === env.IG_USERNAME.toLowerCase())
     return { action: "skip", reason: "self" };
   if (c.timestamp && Date.now() - Date.parse(c.timestamp) > REPLY_WINDOW_MS) return { action: "skip", reason: "outside_7d" };
-  if ((config.scope?.skip_comment_ids ?? []).map(String).includes(c.commentId)) return { action: "skip", reason: "skip_listed" };
-  // Someone (LinkDM, or you by hand) already answered this comment publicly → treat as handled.
+  if (config.skip_comment_ids.includes(c.commentId)) return { action: "skip", reason: "skip_listed" };
+  // Someone (another tool, or you by hand) already answered this comment publicly → treat as handled.
   if (env.IG_USERNAME && (c.replyUsers ?? []).includes(env.IG_USERNAME.toLowerCase())) return { action: "skip", reason: "already_replied" };
-  const scope = config.scope ?? { mode: "allowlist", media_ids: [] };
-  if (c.mediaId && (scope.exclude_media_ids ?? []).includes(c.mediaId)) return { action: "skip", reason: "excluded_media" };
-  if (scope.mode !== "all" && !(scope.media_ids ?? []).includes(c.mediaId)) return { action: "skip", reason: "not_in_allowlist" };
-  // Comments older than the moment a post was switched on are only answered by an explicit backfill.
-  const since = scope.allowed_at?.[c.mediaId];
-  if (!backfill && since && c.timestamp && Date.parse(c.timestamp) < Date.parse(since)) return { action: "skip", reason: "before_allow" };
-  const rule = matchRule(c.text, config.rules);
-  if (!rule) return { action: "skip", reason: "no_match" };
-  return { action: "fire", rule };
+  if (c.mediaId && config.exclude_media_ids.includes(String(c.mediaId))) return { action: "skip", reason: "excluded_media" };
+
+  let candidates = config.automations.filter((a) => runsOn(a, c.mediaId, config));
+  if (onlyAutomation) candidates = candidates.filter((a) => a.id === onlyAutomation);
+  if (!candidates.length) return { action: "skip", reason: "not_in_allowlist" };
+  // Comments older than the moment a post was added only go out through an explicit backfill.
+  const current = (a) => {
+    const since = coveredSince(a, c.mediaId);
+    return backfill || !since || !c.timestamp || Date.parse(c.timestamp) >= Date.parse(since);
+  };
+  const eligible = candidates.filter(current);
+  const rule = matchRule(c.text, eligible);
+  if (rule) return { action: "fire", rule };
+  return { action: "skip", reason: matchRule(c.text, candidates) ? "before_allow" : "no_match" };
 }
 
 // ---------- processing ----------
@@ -281,25 +287,35 @@ export function classify(c, config, env, { backfill = false } = {}) {
 export const newBudget = (env) => ({ sends: Number(env.MAX_SENDS_PER_RUN || 5) });
 
 // Enqueue matched comments in the ledger (atomic insert-if-absent), then process them.
-export async function ingest(comments, env, { dryRun = false, backfill = false, budget = newBudget(env) } = {}) {
+export async function ingest(comments, env, { dryRun = false, backfill = false, onlyAutomation = null, onlyComments = null, budget = newBudget(env) } = {}) {
   const base = await getConfig(env);
   const config = dryRun ? { ...base, dry_run: true } : base;
   const call = ledger(env);
   const fire = [];
   for (const c of comments) {
-    const d = classify(c, config, env, { backfill });
+    if (onlyComments && !onlyComments.includes(c.commentId)) continue;
+    const d = classify(c, config, env, { backfill, onlyAutomation });
     if (d.action !== "fire") {
       if (c.source === "webhook") log("skip", { id: c.commentId, reason: d.reason }); // polls re-read old comments; logging those is noise
       continue;
     }
-    fire.push({ ...c, keyword: d.rule.keyword });
+    fire.push({ ...c, keyword: d.rule.keyword, automationId: d.rule.id, automationName: d.rule.name });
+  }
+  // Drop comments the ledger already finished: they're not "waiting", and re-processing them
+  // would only spend this run's send budget on dedupe no-ops. (In-flight ones are left to the sweep.)
+  if (fire.length) {
+    const { stages } = await call("lookup", { ids: fire.map((c) => c.commentId) });
+    for (let i = fire.length - 1; i >= 0; i--) if (stages[fire[i].commentId]) fire.splice(i, 1);
   }
   // Dry run = preview only: nothing enqueued, nothing marked, so a later real run still sends.
   if (config.dry_run) {
     return fire.map((c) => {
-      const rule = config.rules.find((r) => r.keyword === c.keyword);
-      log("dry_run", { id: c.commentId, user: c.fromUsername, text: c.text, keyword: c.keyword });
-      return { id: c.commentId, result: "dry_run", user: c.fromUsername, text: c.text, mediaId: c.mediaId, dm: dmText(rule), ack: rule.ack };
+      const rule = config.automations.find((a) => a.id === c.automationId);
+      log("dry_run", { id: c.commentId, user: c.fromUsername, text: c.text, automation: rule.name });
+      return {
+        id: c.commentId, result: "dry_run", user: c.fromUsername, text: c.text, mediaId: c.mediaId, timestamp: c.timestamp,
+        automationId: rule.id, automationName: rule.name, dm: dmText(rule), ack: rule.ack,
+      };
     });
   }
   if (fire.length) await call("enqueue", { items: fire });
@@ -320,8 +336,11 @@ export async function processOne(commentId, env, config, call = ledger(env)) {
   const lease = await call("begin", { id: commentId });
   if (!lease.go) return { id: commentId, result: "dedupe", stage: lease.stage };
   const c = lease.item;
-  const rule = (config.rules ?? []).find((r) => r.keyword === c.keyword && r.enabled !== false);
-  if (!rule) return finish(call, commentId, "failed", "rule_removed");
+  // Older ledger items carry only the keyword; newer ones carry the automation id.
+  const rule =
+    config.automations.find((a) => a.id === c.automationId) ??
+    (!c.automationId ? config.automations.find((a) => a.keyword === c.keyword) : undefined);
+  if (!rule || rule.enabled === false) return finish(call, commentId, "failed", "automation removed or paused");
 
   if (lease.stage === "new") {
     const dm = await graph(env, "POST", `${env.IG_ID}/messages`, {
@@ -391,20 +410,20 @@ async function listComments(env, mediaId, maxPages) {
   return out;
 }
 
-export async function poll(env, { full = false, dryRun = false, backfill = false, budget = newBudget(env) } = {}) {
+export async function poll(env, { full = false, dryRun = false, backfill = false, onlyAutomation = null, onlyComments = null, budget = newBudget(env) } = {}) {
   const config = await getConfig(env);
-  const scope = config.scope ?? { mode: "allowlist", media_ids: [] };
-  const mediaIds = new Set((scope.media_ids ?? []).map(String));
-  if (scope.mode === "all") {
+  const active = config.automations.filter((a) => a.enabled !== false && (!onlyAutomation || a.id === onlyAutomation));
+  const mediaIds = new Set(active.flatMap((a) => a.media_ids));
+  if (active.some((a) => a.all_posts)) {
     const limit = full ? Number(env.FULL_SWEEP_MEDIA || 8) : Number(env.POLL_RECENT_MEDIA || 4);
-    const r = await graph(env, "GET", `${env.IG_ID}/media`, { query: { fields: "id,timestamp,media_product_type", limit: String(limit) } });
+    const r = await graph(env, "GET", `${env.IG_ID}/media`, { query: { fields: "id,timestamp", limit: String(limit) } });
     if (r.ok) for (const m of r.data.data ?? []) mediaIds.add(String(m.id));
     else log("poll_media_failed", { error: r.error });
   }
-  for (const id of scope.exclude_media_ids ?? []) mediaIds.delete(String(id));
+  for (const id of config.exclude_media_ids) mediaIds.delete(id);
   let comments = [];
   for (const id of mediaIds) comments = comments.concat(await listComments(env, id, full ? 2 : 1));
-  const results = await ingest(comments, env, { dryRun, backfill, budget });
+  const results = await ingest(comments, env, { dryRun, backfill, onlyAutomation, onlyComments, budget });
   const summary = {
     full, dryRun, media: mediaIds.size, comments: comments.length,
     fired: results.filter((r) => r.result === "done").length,

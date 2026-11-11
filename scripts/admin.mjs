@@ -32,6 +32,20 @@ async function resolveMedia(ref) {
   if (!m) die(`There's no post ${n}.`);
   return m.id;
 }
+function splitTo(args) {
+  const i = args.indexOf("--to");
+  return i === -1 ? { refs: args, target: null } : { refs: args.slice(0, i), target: args[i + 1] };
+}
+function pickAutomation(cfg, target, verb) {
+  const list = cfg.automations ?? [];
+  if (!list.length) die("No automations yet. Create one in the dashboard (/app) first.");
+  if (!target) {
+    if (list.length === 1) return list[0];
+    die(`You have ${list.length} automations. Say which: npm run admin -- ${verb} 3 --to ${list[0].keyword}\n  (${list.map((a) => a.keyword).join(", ")})`);
+  }
+  const t = target.toUpperCase();
+  return list.find((a) => a.id === target || a.keyword === t || a.name.toUpperCase() === t) ?? die(`No automation matches "${target}".`);
+}
 const needRefs = (refs, verb) => {
   if (!refs.length) die(`Usage: npm run admin -- ${verb} <post number or media id> …   (numbers from: npm run admin -- posts)`);
 };
@@ -60,8 +74,10 @@ const commands = {
     console.log(`  ${mark(r.app_webhook?.comments_field)} App subscribed to the "comments" field`);
     console.log(`  ${mark(r.account_subscribed)} Your account subscribed to the app`);
     console.log(`\n${bold("Config")}`);
-    console.log(`  Keywords: ${r.config?.rules?.join(", ")} · mode: ${r.config?.mode} · posts allowed: ${r.config?.posts}${r.config?.dry_run ? yellow(" · DRY RUN") : ""}`);
-    if (r.config?.mode !== "all" && !r.config?.posts) warn("No posts allowed yet, so nothing will fire. Add one: npm run admin -- allow 1");
+    const autos = r.config?.automations ?? [];
+    for (const a of autos) console.log(`  ${a.enabled ? green("●") : dim("○")} ${a.name} ${dim(`(${a.keyword}) · ${a.posts === "all" ? "all posts" : `${a.posts} post(s)`}`)}`);
+    if (r.config?.dry_run) warn("Preview mode is on: nothing is being sent.");
+    if (!autos.some((a) => a.enabled && (a.posts === "all" || a.posts > 0))) warn("No automation is running on any post yet. Open the dashboard (/app) or: npm run admin -- allow 1");
     if (!r.app_webhook?.comments_field || !r.account_subscribed) warn("Fix webhooks with: npm run admin -- subscribe");
   },
 
@@ -98,7 +114,7 @@ const commands = {
     const r = await api("GET", `/admin/media?limit=${n}`);
     if (!r.ok) die(r.error);
     const cfg = await getConfig();
-    const allowed = new Set(cfg.scope?.media_ids ?? []);
+    const allowed = new Set(cfg.automations.filter((a) => a.enabled).flatMap((a) => a.media_ids));
     console.log("");
     r.data.data.forEach((m, i) => {
       const tag = allowed.has(m.id) ? green(" [on]") : "";
@@ -108,31 +124,36 @@ const commands = {
     console.log(dim("\n  Turn one on: npm run admin -- allow 3     ('trial?' = reel not shared to feed)"));
   },
 
-  async allow(refs) {
+  // allow <post…> [--to <keyword|automation id>] · needed when you have more than one automation
+  async allow(args) {
+    const { refs, target } = splitTo(args);
     needRefs(refs, "allow");
     const cfg = await getConfig();
-    cfg.scope.media_ids ??= [];
-    cfg.scope.allowed_at ??= {};
+    const a = pickAutomation(cfg, target, "allow");
     for (const ref of refs) {
       const id = await resolveMedia(ref);
-      if (!cfg.scope.media_ids.includes(id)) {
-        cfg.scope.media_ids.push(id);
-        cfg.scope.allowed_at[id] = new Date().toISOString(); // only comments from now on fire automatically
+      if (!a.media_ids.includes(id)) {
+        a.media_ids.push(id);
+        a.allowed_at[id] = new Date().toISOString(); // only comments from now on fire automatically
       }
-      ok(`On: ${id}`);
+      ok(`"${a.name}" is on for ${id}`);
     }
     await putConfig(cfg);
     console.log(dim("  New comments fire from now on. Older ones wait for you: npm run admin -- preview, then backfill."));
   },
 
-  async disallow(refs) {
+  async disallow(args) {
+    const { refs, target } = splitTo(args);
     needRefs(refs, "disallow");
     const cfg = await getConfig();
+    const pool = target ? [pickAutomation(cfg, target, "disallow")] : cfg.automations;
     for (const ref of refs) {
       const id = await resolveMedia(ref);
-      cfg.scope.media_ids = (cfg.scope.media_ids ?? []).filter((x) => x !== id);
-      if (cfg.scope.allowed_at) delete cfg.scope.allowed_at[id];
-      ok(`Off: ${id}`);
+      for (const a of pool) {
+        a.media_ids = a.media_ids.filter((x) => x !== id);
+        delete a.allowed_at?.[id];
+      }
+      ok(`Off: ${id}${target ? ` for "${pool[0].name}"` : " (all automations)"}`);
     }
     await putConfig(cfg);
   },
@@ -140,7 +161,7 @@ const commands = {
   async skip([commentId]) {
     if (!commentId) die("Usage: npm run admin -- skip <comment_id>");
     const cfg = await getConfig();
-    cfg.scope.skip_comment_ids = [...new Set([...(cfg.scope.skip_comment_ids ?? []), commentId])];
+    cfg.skip_comment_ids = [...new Set([...(cfg.skip_comment_ids ?? []), commentId])];
     await putConfig(cfg);
     ok(`Will never act on comment ${commentId}`);
   },
@@ -167,8 +188,8 @@ const commands = {
     if (!text) die('Usage: npm run admin -- try "diwalii pls 🙏"');
     const { matchRule } = await import("../src/core.js");
     const cfg = await getConfig();
-    const r = matchRule(text, cfg.rules);
-    console.log(r ? `  ${green("✓")} "${text}" → ${bold(r.keyword)} ${dim(`(${r.match ?? "fuzzy"})`)}` : `  ${red("✗")} "${text}" matches no rule`);
+    const r = matchRule(text, (cfg.automations ?? []).filter((a) => a.enabled !== false));
+    console.log(r ? `  ${green("✓")} "${text}" → ${bold(r.name)} ${dim(`(${r.keyword}, ${r.match ?? "fuzzy"})`)}` : `  ${red("✗")} "${text}" matches no rule`);
   },
 
   async status() {
@@ -205,7 +226,7 @@ ${bold("npm run admin -- <command>")}
   ${bold("subscribe")}             subscribe your account + app to comment webhooks
 
   ${bold("posts")} [n]             list recent posts, numbered (1 = newest)
-  ${bold("allow")} <n|id>…         turn the tool on for these posts (n from \`posts\`); new comments only
+  ${bold("allow")} <n|id>… [--to KW]  turn an automation on for these posts (n from \`posts\`); new comments only
   ${bold("disallow")} <n|id>…      turn it off
   ${bold("skip")} <comment_id>     never act on one comment
   ${bold("preview")}               who would get a DM right now (sends nothing)

@@ -2,7 +2,16 @@
 
 **Comment a keyword. Get the link in your DMs.**
 
-A self-hosted Instagram comment-to-DM tool. Someone comments `GUIDE` on your reel → they get a private DM with your link → a public "sent! check your dms 📩" appears under their comment. It runs on your own free Cloudflare Worker and your own Meta app. No subscription, and no third party holds your account.
+A self-hosted Instagram comment-to-DM tool with a web dashboard. Someone comments `GUIDE` on your reel → they get a private DM with your link → a public "sent! check your dms 📩" appears under their comment. You set it all up from a dashboard on your own free Cloudflare Worker and your own Meta app. No subscription, and no third party holds your account.
+
+**The dashboard** lives at `https://<your-worker>/app` and works on a phone:
+
+- **Automations:** create, toggle, reorder and delete keyword automations.
+- **Editor:** trigger, message and posts, with a live Instagram DM preview and a "Try a comment" tester.
+- **Waiting comments:** see who commented before you switched a post on, and send to them when you choose.
+- **Posts:** a grid of your recent posts and reels, with trial reels marked.
+- **Activity:** every send, retry and failure, with filters.
+- **Settings:** preview mode, health checks, reconnect Instagram, light or dark theme.
 
 [![test](https://github.com/theChitranshM/ig-comment-dm/actions/workflows/test.yml/badge.svg)](https://github.com/theChitranshM/ig-comment-dm/actions/workflows/test.yml)
 
@@ -16,11 +25,12 @@ A self-hosted Instagram comment-to-DM tool. Someone comments `GUIDE` on your ree
 
 - **Exactly once, every time.** Meta retries webhooks for up to 36 hours, and polling re-reads old comments. Each comment is claimed atomically in a Durable Object, so nobody gets two DMs, even when the same event arrives three times in the same second.
 - **DM first, then the public reply.** The "check your dms" reply is posted only after the DM succeeds, so you never publicly promise a message that didn't go out.
+- **One automation per job.** Each automation has its own keyword, message and posts, so the same keyword can send different links on different posts.
 - **Forgiving matching.** `GUIDE`, `guide pls`, `#guide`, `guidee`, `gude` and `G U I D E` all count, with no false hits like "misguided". You choose fuzzy or exact per keyword.
 - **Doesn't miss comments.** Webhooks deliver in about a second. A poll every 5 minutes and a daily sweep catch anything a webhook missed (downtime, a bad deploy), within Instagram's 7-day reply window. Trial reels work too.
 - **Safe by default.**
-  - Nothing fires until you switch a post on, and then only for **new** comments.
-  - Older comments wait until you `preview` and `backfill` them yourself.
+  - Nothing fires until you add a post to an automation, and then only for **new** comments.
+  - Older comments show up as "waiting" and are sent only when you choose.
   - It ignores your own comments.
   - Polls skip comments you've already answered, whether by hand or with another tool.
 - **$0.** Everything fits in Cloudflare's free tier. The token never expires, so there's nothing to renew every 60 days.
@@ -54,13 +64,22 @@ The full walkthrough, with every click, is **[docs/SETUP.md](docs/SETUP.md)**. I
    npm run admin -- subscribe
    npm run admin -- check
    ```
-5. **Publish the app** in Meta, then switch on a post:
-   ```bash
-   npm run admin -- posts
-   npm run admin -- allow 1
-   ```
+5. **Publish the app** in Meta, then **open your dashboard** at `https://<your-worker>/app` and sign in with `ADMIN_KEY` from `.secrets.local`. `npm run setup` prints the exact URL.
 
-## Set your keywords
+## Create an automation
+
+1. Open the dashboard and go to **Automations → New automation**.
+2. Set the **trigger**: a keyword such as `GUIDE`, plus any aliases. Leave matching on fuzzy unless you need exact spelling.
+3. Write the **message**: the DM, an optional link, and an optional public reply.
+4. Pick the **posts** it runs on, or choose all posts. The preview on the right shows the DM as people will see it.
+5. Use **Try a comment** to check a phrase, then save. New comments on those posts get the DM from now on.
+
+Comments that were already there when you added a post are not sent automatically. They appear as "N people waiting" on the automation, and you choose whether to send to them.
+
+<details>
+<summary>Prefer the terminal?</summary>
+
+Everything above also works from the CLI. Create the first automation in the dashboard, or edit the config file directly:
 
 ```bash
 npm run admin -- config pull     # writes config.local.json
@@ -72,64 +91,91 @@ npm run admin -- config push     # live within about a minute, no redeploy
 
 ```json
 {
-  "rules": [
+  "version": 2,
+  "automations": [
     {
+      "id": "a_guide",
+      "name": "Free guide",
+      "enabled": true,
       "keyword": "GUIDE",
-      "match": "fuzzy",
       "aliases": ["GUIDES", "THE GUIDE"],
+      "match": "fuzzy",
       "dm": "here's the guide 📘",
       "link": "https://example.com/guide",
-      "ack": "sent! check your dms 📩"
+      "ack": "sent! check your dms 📩",
+      "all_posts": false,
+      "media_ids": ["<MEDIA_ID>"],
+      "allowed_at": {}
     }
   ],
-  "scope": {
-    "mode": "allowlist",
-    "media_ids": ["<MEDIA_ID>"],
-    "exclude_media_ids": [],
-    "skip_comment_ids": []
-  },
+  "exclude_media_ids": [],
+  "skip_comment_ids": [],
   "dry_run": false
 }
 ```
 
-**`rules`**
+**Automation fields**
 
 | Field | Meaning |
 |---|---|
+| `id` | Stable identifier. Leave it out on a new automation and one is generated. |
+| `name` | Display name in the dashboard |
+| `enabled` | `false` pauses the automation |
 | `keyword` | The trigger. Case-insensitive, and it must stand alone: `guide pls` ✓, `#guide` ✓, `misguided` ✗ |
-| `match` | **`"fuzzy"`** (default) also forgives accents, stretched letters (`guideeee`), spaced letters (`g u i d e`), and **one typo for keywords of 5+ letters** (two for 9+). Keywords under 5 letters never get typo tolerance, so `EYE` won't fire on "bye". **`"exact"`** means spelling must match. |
 | `aliases` | Other words that trigger the same reply: plurals, nicknames, other languages |
-| `dm` | The private reply |
+| `match` | **`"fuzzy"`** (default) also forgives accents, stretched letters (`guideeee`), spaced letters (`g u i d e`), and **one typo for keywords of 5+ letters** (two for 9+). Keywords under 5 letters never get typo tolerance, so `EYE` won't fire on "bye". **`"exact"`** means spelling must match. |
+| `dm` | The private reply. Required. |
 | `link` | Optional. Added on its own line under `dm` |
 | `ack` | Optional public reply, posted only after the DM succeeds |
+| `all_posts` | `true` runs on every post except `exclude_media_ids` |
+| `media_ids` | The posts it runs on when `all_posts` is `false` |
+| `allowed_at` | When each post was added. Comments older than this wait for a backfill. The CLI and dashboard set it for you. |
 
-**`scope`**
+**Top-level fields**
 
 | Field | Meaning |
 |---|---|
-| `mode` | `"allowlist"`: only `media_ids` · `"all"`: every post except `exclude_media_ids` |
+| `exclude_media_ids` | Posts no automation ever touches |
 | `skip_comment_ids` | Individual comments to never touch |
+| `dry_run` | `true` is preview mode: comments are matched but nothing is sent |
 
-Rules are checked top to bottom. An exact match on any rule beats a fuzzy match on an earlier one. To test a phrase without posting anything:
+Two enabled automations can't share a keyword or alias on overlapping posts; the push is rejected. Automations are checked top to bottom, and an exact match on any automation beats a fuzzy match on an earlier one. Configs from earlier versions (`rules` and `scope`) are migrated automatically when read.
+
+Day-to-day commands:
 
 ```bash
-npm run admin -- try "guidee pls 🙏"
+npm run admin -- posts                       # numbered list of recent posts
+npm run admin -- allow 3 --to GUIDE          # add post 3 to the GUIDE automation
+npm run admin -- preview                     # who would get a DM right now, sends nothing
+npm run admin -- backfill                    # send to waiting comments, after you confirm
+npm run admin -- try "guidee pls 🙏"         # which automation would this trigger?
 ```
 
-## Everyday commands
+`--to <KEYWORD|id>` is required for `allow` when you have more than one automation.
+
+</details>
+
+## CLI reference
+
+The dashboard covers daily use. The CLI is still supported for scripting and for setup.
 
 | Command | What it does |
 |---|---|
 | `npm run admin -- check` | Is everything wired up? Checks the token, account, permissions and both webhook subscriptions |
 | `npm run admin -- posts` | Your recent posts, numbered, with comment counts and which are switched on |
-| `npm run admin -- allow 3` | Switch on post 3 (or pass a media id). Only comments from now on fire automatically |
+| `npm run admin -- allow <n\|id>... [--to KEYWORD]` | Add posts to an automation. Only comments from now on fire automatically. `--to` is required with more than one automation |
+| `npm run admin -- disallow <n\|id>... [--to KEYWORD]` | Remove posts from one automation, or from all of them |
+| `npm run admin -- skip <comment_id>` | Never act on one comment |
 | `npm run admin -- preview` | Who would get a DM right now, older comments included. Sends nothing |
 | `npm run admin -- backfill` | Preview, confirm, then answer waiting comments (up to 7 days old) |
-| `npm run admin -- try "<text>"` | Which rule a comment would trigger |
+| `npm run admin -- try "<text>"` | Which automation a comment would trigger |
+| `npm run admin -- config pull\|push` | Edit the v2 automations JSON locally |
 | `npm run admin -- status` | Recent sends and retries |
 | `npm run admin -- logs` | Live logs from the Worker (same as `npm run logs`) |
 
 **Updating** after a `git pull`: run `npm run deploy`. Your config, token and history are kept.
+
+**Working on the dashboard?** `npm run dev:ui` serves a local mock of the dashboard and its API at `http://localhost:8788/app`. The login key is `dev`. No Instagram or Cloudflare account is needed.
 
 ## How it works
 
@@ -140,7 +186,7 @@ Instagram comment
    │                                     │ (after the response)
    └─ poll (every 5 min, daily 7-day sweep)
                                          ▼
-          own comment? · skip-listed? · already answered? · post switched on? · keyword?
+          own comment? · skip-listed? · already answered? · automation on this post? · keyword?
                                          ▼
           Ledger (Durable Object): claim comment_id atomically
                                          ▼
@@ -151,7 +197,7 @@ Instagram comment
                                        done
 ```
 
-More detail, including why it uses a Durable Object instead of KV: [docs/HOW-IT-WORKS.md](docs/HOW-IT-WORKS.md).
+More detail, including the automation model and why it uses a Durable Object instead of KV: [docs/HOW-IT-WORKS.md](docs/HOW-IT-WORKS.md).
 
 ## Instagram's rules (apply to every tool like this)
 
@@ -166,7 +212,9 @@ Everything runs on Cloudflare's free plan: Workers, one SQLite Durable Object, W
 
 ## Troubleshooting
 
-[docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) covers every snag found while building this, with the fix for each. For example: "Instagram login is not available for newer apps", the token losing access to your account, webhooks saved but nothing arriving, and comments visible in the app but not to the API.
+[docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) covers every snag found while building this, with the fix for each. For example: "Instagram login is not available for newer apps", dashboard login problems, the health banner, the token losing access to your account, webhooks saved but nothing arriving, and comments visible in the app but not to the API.
+
+The dashboard's JSON API is documented in [docs/API.md](docs/API.md). Security details are in [SECURITY.md](SECURITY.md).
 
 ## Tests
 
@@ -174,10 +222,12 @@ Everything runs on Cloudflare's free plan: Workers, one SQLite Durable Object, W
 npm test
 ```
 
-There are no dependencies. The suite covers:
+There are no dependencies. `npm test` runs 190 tests covering:
 - signature checks and both webhook payload shapes
 - fuzzy and exact matching
 - the self filter and switch-on safety
+- automations: validation, per-post routing and v1 migration
+- the dashboard API: login, sessions, CSRF guard and every endpoint
 - concurrent replays
 - retries that never double-send
 - the send budget, trial-reel polling, the 7-day backfill, and the token check

@@ -1,0 +1,1351 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="robots" content="noindex">
+<title>ig-comment-dm</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect x='3' y='3' width='10' height='10' rx='2' fill='%2318181B'/%3E%3C/svg%3E">
+<script>try{var t=localStorage.getItem('igdm-theme');if(t==='light'||t==='dark')document.documentElement.dataset.theme=t}catch(e){}</script>
+<style>
+:root{
+  --bg:#F7F7F8;--surface:#FFFFFF;--sunk:#F4F4F5;--line:#E4E4E7;--line-2:#D4D4D8;
+  --ink:#18181B;--ink-2:#52525B;--ink-3:#71717A;--ph:#A1A1AA;
+  --accent:#0B6BDE;--on-accent:#fff;--btn:#18181B;--on-btn:#fff;--accent-soft:rgba(11,107,222,.14);
+  --ok:#16A34A;--warn:#D97706;--bad:#DC2626;--warn-t:#B45309;--sw-off:#D4D4D8;
+  --shadow:0 8px 24px rgba(0,0,0,.08),0 2px 6px rgba(0,0,0,.04);--scrim:rgba(9,9,11,.32);
+  --ph-bg:#fff;--ph-bubble:#EFEFEF;--ph-text:#000;--ph-mute:#737373;--ph-link:#00376B;--frame:#E4E4E7;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,Roboto,"Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){
+  --bg:#09090B;--surface:#121214;--sunk:#1F1F23;--line:#27272A;--line-2:#3F3F46;
+  --ink:#FAFAFA;--ink-2:#A1A1AA;--ink-3:#8A8A94;--ph:#71717A;
+  --accent:#3B8EF5;--on-accent:#0B0B0D;--btn:#FAFAFA;--on-btn:#09090B;--accent-soft:rgba(59,142,245,.22);
+  --ok:#22C55E;--warn:#F59E0B;--bad:#EF4444;--warn-t:#F59E0B;--sw-off:#3F3F46;
+  --shadow:0 8px 24px rgba(0,0,0,.5),0 2px 6px rgba(0,0,0,.35);--scrim:rgba(0,0,0,.6);
+  --ph-bg:#000;--ph-bubble:#262626;--ph-text:#F5F5F5;--ph-mute:#A8A8A8;--ph-link:#E0F1FF;--frame:#27272A;color-scheme:dark}}
+:root[data-theme=dark]{
+  --bg:#09090B;--surface:#121214;--sunk:#1F1F23;--line:#27272A;--line-2:#3F3F46;
+  --ink:#FAFAFA;--ink-2:#A1A1AA;--ink-3:#8A8A94;--ph:#71717A;
+  --accent:#3B8EF5;--on-accent:#0B0B0D;--btn:#FAFAFA;--on-btn:#09090B;--accent-soft:rgba(59,142,245,.22);
+  --ok:#22C55E;--warn:#F59E0B;--bad:#EF4444;--warn-t:#F59E0B;--sw-off:#3F3F46;
+  --shadow:0 8px 24px rgba(0,0,0,.5),0 2px 6px rgba(0,0,0,.35);--scrim:rgba(0,0,0,.6);
+  --ph-bg:#000;--ph-bubble:#262626;--ph-text:#F5F5F5;--ph-mute:#A8A8A8;--ph-link:#E0F1FF;--frame:#27272A;color-scheme:dark}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 14px/1.5 var(--sans);-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility}
+body.lock{overflow:hidden}
+h1,h2,h3,p{margin:0}
+button,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+a{color:inherit}
+[hidden]{display:none!important}
+:focus{outline:none}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.num,time{font-variant-numeric:tabular-nums}
+.mute{color:var(--ink-3)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+svg.i{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;flex:none}
+
+/* buttons & inputs */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:32px;padding:0 12px;border:1px solid var(--line-2);border-radius:8px;background:var(--surface);color:var(--ink);font-weight:500;white-space:nowrap;transition:background .15s ease-out,border-color .15s ease-out}
+.btn:hover{background:var(--sunk)}
+.sht{display:none}
+.btn[disabled]{opacity:.5;pointer-events:none}
+.btn.primary{background:var(--btn);border-color:var(--btn);color:var(--on-btn)}
+.btn.primary:hover{background:var(--btn);opacity:.88}
+.btn.solid-bad{background:var(--bad);border-color:var(--bad);color:#fff}
+.btn.solid-bad:hover{background:var(--bad);opacity:.9}
+.btn.ghost{border-color:transparent;background:transparent;color:var(--ink-2)}
+.btn.ghost:hover{background:var(--sunk);color:var(--ink)}
+.btn.danger{color:var(--bad);border-color:transparent;background:transparent}
+.btn.danger:hover{background:var(--sunk)}
+.btn.sm{min-height:28px;padding:0 10px;font-size:13px}
+.btn.icon{padding:0;width:32px}
+kbd{font:500 11px/1 var(--sans);padding:3px 5px;border:1px solid var(--line-2);border-bottom-width:2px;border-radius:4px;background:var(--sunk);color:var(--ink-2)}
+.field{display:grid;gap:6px;margin-bottom:20px}
+.field>label,.lbl{font-weight:500;font-size:12px;color:var(--ink-2);display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.lbl .mute,.field>label .mute{font-weight:400;font-size:12px}
+.in{width:100%;min-height:36px;padding:7px 10px;border:1px solid var(--line-2);border-radius:8px;background:var(--surface);transition:border-color .15s,box-shadow .15s}
+.in::placeholder,.tags input::placeholder{color:var(--ph);opacity:1}
+.in:hover{border-color:var(--ink-3)}
+.in:focus,.tags:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+textarea.in{resize:vertical;min-height:96px;line-height:1.5}
+.in.kw{text-transform:uppercase;letter-spacing:.02em;font-weight:500}
+.help{font-size:12px;color:var(--ink-3)}
+.err{font-size:12px;color:var(--bad)}
+.count{font-size:12px;font-weight:400;color:var(--ink-3);font-variant-numeric:tabular-nums}
+.count.over{color:var(--bad)}
+.tok{display:inline-flex;align-items:center;gap:4px;padding:1px 6px;border:1px solid var(--line-2);border-radius:6px;background:var(--sunk);font:500 12px/1.6 var(--mono);letter-spacing:.02em;color:var(--ink)}
+.tok.alias{background:transparent;color:var(--ink-2);font-weight:400}
+.cid{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--line-2);border-radius:6px;background:var(--sunk);color:var(--ink-3);padding:1px 6px;font:400 11.5px/1.6 var(--mono);opacity:0;transition:opacity .15s ease-out;cursor:pointer}
+.cid:hover{color:var(--ink);border-color:var(--ink-3)}
+.act:hover .cid,.cid:focus-visible{opacity:1}
+.tok button{border:0;background:none;padding:0 0 0 2px;color:var(--ink-3);display:inline-flex}
+.tok button:hover{color:var(--ink)}
+.tags{display:flex;flex-wrap:wrap;gap:6px;align-items:center;min-height:36px;padding:4px 6px;border:1px solid var(--line-2);border-radius:8px;background:var(--surface)}
+.tags input{flex:1;min-width:120px;border:0;background:none;padding:4px;font-family:var(--sans);text-transform:uppercase;font-size:13px}
+.tags input:focus-visible{outline:none}
+.seg{display:inline-flex;position:relative;padding:2px;border:1px solid var(--line);border-radius:8px;background:var(--sunk)}
+.seg input{position:absolute;opacity:0;width:1px;height:1px}
+.seg label{padding:5px 14px;border-radius:6px;font-weight:500;font-size:13px;color:var(--ink-2);cursor:pointer;min-height:28px;display:inline-flex;align-items:center;transition:background .15s,color .15s}
+.seg input:checked+label{background:var(--surface);color:var(--accent);box-shadow:0 0 0 1px var(--line-2)}
+.seg input:focus-visible+label{outline:2px solid var(--accent);outline-offset:1px}
+.sw{position:relative;width:32px;height:20px;border-radius:10px;border:0;padding:0;background:var(--sw-off);flex:none;transition:background .15s ease-out}
+.sw i{position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:transform .15s ease-out;box-shadow:0 1px 2px rgba(0,0,0,.3)}
+.sw[aria-checked=true]{background:var(--accent)}
+.sw[aria-checked=true] i{transform:translateX(12px)}
+.sw::after{content:"";position:absolute;inset:-10px -6px}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--ink-3);display:inline-block;flex:none}
+.dot.ok{background:var(--ok)}.dot.warn{background:var(--warn)}.dot.bad{background:var(--bad)}
+.st{display:inline-flex;align-items:center;gap:7px;font-size:13px;white-space:nowrap}
+
+/* shell */
+.top{position:sticky;top:0;z-index:20;background:var(--surface);border-bottom:1px solid var(--line)}
+.top-in{max-width:960px;margin:0 auto;padding:0 24px;height:52px;display:flex;align-items:center;gap:28px}
+.mark{display:flex;align-items:center;gap:9px;font:600 15px var(--sans);letter-spacing:-.01em;text-decoration:none;white-space:nowrap}
+.logo{width:20px;height:20px;border-radius:6px;background:var(--ink);color:var(--bg);display:grid;place-items:center;flex:none}
+.logo svg{width:12px;height:12px;fill:currentColor;stroke:none}
+.tabs{display:flex;gap:4px;height:100%}
+.tabs a{display:flex;align-items:center;padding:0 10px;color:var(--ink-2);text-decoration:none;font-weight:500;position:relative;transition:color .15s}
+.tabs a:hover{color:var(--ink)}
+.tabs a[aria-current=page]{color:var(--ink)}
+.tabs a[aria-current=page]::after{content:"";position:absolute;left:10px;right:10px;bottom:-1px;height:2px;background:var(--ink)}
+.top-r{margin-left:auto;display:flex;align-items:center;gap:16px}
+.health{display:inline-flex;align-items:center;gap:8px;line-height:1;font-size:13px;color:var(--ink-2);text-decoration:none;white-space:nowrap;max-width:240px}
+.health span:last-child{overflow:hidden;text-overflow:ellipsis}
+.acct{display:flex;align-items:center;gap:8px;font-size:13px;white-space:nowrap}
+.acct span{line-height:1}
+.av{width:22px;height:22px;border-radius:50%;background:var(--sunk);object-fit:cover;flex:none;display:inline-grid;place-items:center;font:500 11px var(--sans);color:var(--ink-2);border:1px solid var(--line)}
+.btab{display:none}
+main{max-width:960px;margin:0 auto;padding:32px 24px 96px}
+.banners{max-width:960px;margin:0 auto;padding:0 24px}
+.banner{display:flex;gap:16px;align-items:flex-start;justify-content:space-between;margin-top:16px;padding:12px 16px;border:1px solid var(--line);border-left:3px solid var(--warn);border-radius:12px;background:var(--surface)}
+.banner.bad{border-left-color:var(--bad)}
+.banner.info{border-left-color:var(--ink-3)}
+.banner strong{font-weight:600}
+.banner ul{list-style:none;margin:6px 0 0;padding:0;display:grid;gap:6px}
+.banner li .mute{display:block}
+.banner .acts{display:flex;gap:8px;flex:none}
+.ph{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;margin-bottom:20px}
+.ph h1{font-size:22px;font-weight:600;letter-spacing:-.01em;line-height:1.25}
+.sub{color:var(--ink-3);margin-top:2px;font-size:13px}
+
+/* stats */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--line);border-radius:12px;background:var(--surface);margin-bottom:24px;overflow:hidden}
+.stat{padding:16px 20px}
+.stat+.stat{border-left:1px solid var(--line)}
+.stat .k{font-size:12px;font-weight:500;color:var(--ink-2)}
+.stat .v{font-size:24px;line-height:1.2;font-weight:600;letter-spacing:-.02em;margin-top:4px;font-variant-numeric:tabular-nums}
+.stat .v.bad{color:var(--bad)}
+.stat .s{font-size:12px;color:var(--ink-3);margin-top:2px}
+.stat a,.link{color:var(--accent);text-decoration:none}
+.stat a:hover,.link:hover{text-decoration:underline;text-underline-offset:3px}
+
+/* automation rows */
+.rows{border:1px solid var(--line);border-radius:12px;background:var(--surface);overflow:hidden}
+.row{display:grid;grid-template-columns:16px 32px minmax(0,1fr) auto;gap:0 12px;padding:16px 16px 16px 10px;border-bottom:1px solid var(--line);position:relative;align-items:start}
+.row:last-child{border-bottom:0}
+@media (hover:hover){.row{cursor:pointer}.row:hover{background:var(--sunk)}}
+.row.dragging{opacity:.4}
+.row.drop-before::before,.row.drop-after::after{content:"";position:absolute;left:0;right:0;height:2px;background:var(--accent);z-index:1}
+.row.drop-before::before{top:-1px}.row.drop-after::after{bottom:-1px}
+.grip{display:flex;align-items:flex-start;justify-content:center;padding-top:3px;height:24px;color:var(--ink-3);cursor:grab;opacity:0;transition:opacity .15s}
+.row:hover .grip{opacity:1}
+.grip svg{fill:currentColor;stroke:none;width:14px;height:14px}
+.rname{display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-height:24px}
+.rname a{font-weight:600;font-size:15px;text-decoration:none;color:var(--ink)}
+.toks{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:8px}
+.rdm{margin-top:8px;color:var(--ink-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:620px}
+.rmeta{margin-top:8px;display:flex;gap:2px 14px;flex-wrap:wrap;align-items:center;font-size:13px;color:var(--ink-3)}
+.rmeta .bad{color:var(--bad)}
+.rmeta .warn{color:var(--warn-t)}
+.wait{display:inline-flex;align-items:center;gap:6px;border:0;background:none;padding:0;color:var(--warn-t);font-weight:500;font-size:13px}
+.wait:hover{text-decoration:underline;text-underline-offset:3px}
+.rside{display:flex;align-items:flex-start;gap:12px}
+.rside .btn,.rside .more{opacity:0;transition:opacity .15s}
+.row:hover .rside .btn,.row:hover .rside .more,.rside .btn:focus-visible,.rside .more:focus-visible,.rside .more[aria-expanded=true]{opacity:1}
+.rside{align-items:center}
+.menu{position:fixed;z-index:60;min-width:168px;padding:4px;background:var(--surface);border:1px solid var(--line);border-radius:8px;box-shadow:var(--shadow)}
+.menu button{display:block;width:100%;text-align:left;border:0;background:none;padding:7px 10px;border-radius:6px;min-height:32px}
+.menu button:hover,.menu button:focus-visible{background:var(--sunk);outline:none}
+.menu button.danger{color:var(--bad)}
+.menu hr{border:0;border-top:1px solid var(--line);margin:4px 0}
+.row.off .rname a,.row.off .rdm{color:var(--ink-3)}
+.empty{padding:40px 24px;max-width:520px}
+.empty h2{font-size:20px;font-weight:600;letter-spacing:-.01em}
+.empty p{color:var(--ink-2);margin:6px 0 16px}
+
+/* skeleton */
+.sk{border-radius:8px;background:var(--sunk)}
+
+/* posts */
+.pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(176px,1fr));gap:24px 16px}
+.pc{display:flex;flex-direction:column;gap:8px;min-width:0;}
+.pt{position:relative;aspect-ratio:4/5;border-radius:8px;overflow:hidden;background:var(--sunk);border:1px solid var(--line)}
+.pt img{width:100%;height:100%;object-fit:cover;display:block}
+.pt .ph-none,.thumb-none{width:100%;height:100%;display:grid;place-items:center;color:var(--ink-3);font:12px var(--sans);background:repeating-linear-gradient(45deg,var(--sunk),var(--sunk) 8px,var(--line) 8px,var(--line) 9px)}
+.tag{position:absolute;top:8px;left:8px;padding:1px 6px;border-radius:6px;font:500 11px/1.6 var(--sans);background:var(--ink);color:var(--bg);letter-spacing:.02em}
+.ext{position:absolute;top:6px;right:6px;width:28px;height:28px;display:grid;place-items:center;border-radius:6px;background:rgba(18,17,16,.62);color:#fff;opacity:0;transition:opacity .15s}
+.pt:hover .ext,.tile:hover .ext,.ext:focus-visible{opacity:1}
+.pmeta{display:flex;justify-content:space-between;color:var(--ink-3);font-size:12.5px}
+.pmeta span{display:inline-flex;align-items:center;gap:5px}
+.pcap{color:var(--ink-2);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pchips{display:flex;gap:4px;flex-wrap:wrap;min-height:22px;align-items:center}
+.pchips a{text-decoration:none}
+.more{display:flex;justify-content:flex-start;margin-top:32px}
+
+/* activity */
+.filters{display:flex;gap:4px;margin-bottom:12px;border-bottom:1px solid var(--line)}
+.filters button{border:0;background:none;padding:8px 10px;color:var(--ink-2);font-weight:500;position:relative;min-height:36px}
+.filters button[aria-pressed=true]{color:var(--ink)}
+.filters button[aria-pressed=true]::after{content:"";position:absolute;left:10px;right:10px;bottom:-1px;height:1.5px;background:var(--ink)}
+.filters .c{font-size:12px;color:var(--ink-3);margin-left:5px}
+.uu{display:grid;min-width:0;line-height:1.35}
+.act .tm time{white-space:nowrap}
+.act{display:grid;grid-template-columns:minmax(120px,1.1fr) minmax(0,2fr) minmax(0,1.3fr) 168px 96px;gap:16px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line);}
+.act.hd{padding:6px 0;font-size:12px;font-weight:500;color:var(--ink-3)}
+.act .u{font-weight:500;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.act .t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink-2)}
+.act .a{display:flex;align-items:center;gap:8px;min-width:0;font-size:13px}
+.act .a>span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.act .tm{text-align:right;font-size:12px;color:var(--ink-3);display:flex;justify-content:flex-end;align-items:center;gap:6px}
+.src{font-size:12px;color:var(--ink-3)}
+.live{font-size:12px;color:var(--ink-3)}
+
+/* settings */
+.sec{display:grid;grid-template-columns:220px 1fr;gap:24px;padding:24px 0;border-top:1px solid var(--line)}
+.sec:first-of-type{border-top:0;padding-top:0}
+.sec h2{font-size:15px;font-weight:600}
+.sec .d{color:var(--ink-3);font-size:13px;margin-top:4px}
+.line{display:flex;justify-content:space-between;align-items:center;gap:16px}
+.chk-list{display:grid;gap:0;margin:0;padding:0;list-style:none}
+.chk-list li{display:flex;gap:10px;align-items:baseline;padding:8px 0;border-bottom:1px solid var(--line)}
+.chk-list li:last-child{border:0}
+.chk-list .ic{width:16px;flex:none;align-self:center}
+.ok-c{color:var(--ok)}.bad-c{color:var(--bad)}
+.steps{margin:0;padding:0;list-style:none;display:grid;gap:12px;counter-reset:s}
+.steps li{counter-increment:s;display:grid;grid-template-columns:24px 1fr}
+.steps li::before{content:counter(s) ".";font-size:14px;color:var(--ink-3)}
+.kl{display:grid;grid-template-columns:auto 1fr;gap:8px 16px;margin:0;align-items:center}
+.kl dt{display:flex;gap:4px}.kl dd{margin:0;color:var(--ink-2)}
+
+/* layers */
+.layer{position:fixed;inset:0;z-index:50;background:transparent;transition:background .2s ease-out}
+.layer.in{background:var(--scrim)}
+.layer.center{display:grid;place-items:center;padding:16px}
+.modal{width:min(480px,100%);max-height:calc(100dvh - 32px);overflow:auto;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);padding:24px;opacity:0;transform:translateY(8px);transition:opacity .15s ease-out,transform .15s ease-out}
+.modal.wide{width:min(560px,100%)}
+.layer.in .modal{opacity:1;transform:none}
+.modal h2{font-size:15px;font-weight:600}
+.modal p{color:var(--ink-2);margin-top:8px}
+.mfoot{display:flex;justify-content:flex-end;gap:8px;margin-top:24px}
+.wlist{margin:16px 0 0;border:1px solid var(--line);border-radius:6px;max-height:300px;overflow:auto}
+.wi{display:grid;grid-template-columns:20px 1fr;gap:10px;padding:10px 12px;border-bottom:1px solid var(--line);align-items:start;cursor:pointer;min-height:44px}
+.wi:last-child{border:0}
+.wi .u{font-weight:500;font-size:13px}.wi .t{color:var(--ink-2);overflow-wrap:anywhere}
+.wi input,.chkrow input{accent-color:var(--accent);width:16px;height:16px;margin:3px 0 0}
+.chkrow{display:flex;gap:10px;align-items:center;font-weight:500;padding:0 0 12px}
+.drawer{position:absolute;top:0;right:0;bottom:0;width:min(940px,100%);background:var(--surface);border-left:1px solid var(--line);border-radius:12px 0 0 12px;box-shadow:var(--shadow);display:flex;flex-direction:column;transform:translateX(24px);opacity:0;transition:transform .2s ease-out,opacity .2s ease-out;overflow:hidden}
+.layer.in .drawer{transform:none;opacity:1}
+.dh{display:flex;align-items:center;gap:16px;padding:0 24px;height:56px;border-bottom:1px solid var(--line);flex:none}
+.dh h2{font-size:15px;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dh .sp{flex:1}
+.dh label{display:flex;align-items:center;gap:8px;color:var(--ink-2);font-size:13px}
+.dh .m{display:none}
+.db{flex:1;overflow:auto;display:grid;grid-template-columns:minmax(0,1fr) 320px;align-items:start}
+.df{padding:24px;min-width:0}
+.dp{position:sticky;top:0;padding:24px 24px 24px 0;display:flex;flex-direction:column;align-items:center;gap:12px}
+.dp summary{display:none}
+.df section+section{margin-top:24px;padding-top:24px;border-top:1px solid var(--line)}
+.sh{display:flex;align-items:baseline;gap:12px;margin-bottom:16px}
+.sh span{font-size:12px;color:var(--ink-3);font-variant-numeric:tabular-nums}
+.sh h3{font-size:13px;font-weight:600}
+.dfoot{display:flex;align-items:center;gap:8px;padding:12px 24px;border-top:1px solid var(--line);flex:none;background:var(--surface);padding-bottom:max(12px,env(safe-area-inset-bottom))}
+.dfoot .sp{flex:1}
+.tryr{display:flex;align-items:center;gap:8px;min-height:22px;font-size:13px}
+.pick{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:12px 10px;margin-top:16px}
+.tile{position:relative;display:flex;flex-direction:column;gap:6px;min-width:0}
+.tile-btn{position:relative;padding:0;border:1px solid var(--line);border-radius:8px;overflow:hidden;aspect-ratio:4/5;background:var(--sunk);display:block;width:100%;transition:border-color .15s,box-shadow .15s}
+.tile-btn img{width:100%;height:100%;object-fit:cover;display:block;transition:opacity .15s}
+.tile-btn:hover{border-color:var(--ink-3)}
+.tile.on .tile-btn{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent)}
+
+.chk{position:absolute;left:6px;top:6px;width:20px;height:20px;border-radius:5px;border:1.5px solid rgba(255,255,255,.9);background:rgba(18,17,16,.35);display:grid;place-items:center;color:transparent}
+.tile.on .chk{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.tw{position:relative}
+.tile .tag{top:6px;left:auto;right:6px}
+.tile .ext{top:auto;bottom:6px;right:auto;left:6px}
+.tile .tag+.cc{}
+.tile .ext{width:24px;height:24px}
+.cc{position:absolute;right:6px;bottom:6px;display:inline-flex;gap:4px;align-items:center;padding:1px 6px;border-radius:4px;background:rgba(18,17,16,.62);color:#fff;font:500 11px/1.6 var(--sans);pointer-events:none}
+.tile .cap{font-size:12px;color:var(--ink-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.notice{padding:10px 12px;border:1px solid var(--line);border-radius:8px;color:var(--ink-2);font-size:13px}
+
+/* phone preview */
+.seg.sm label{padding:3px 12px;min-height:26px;font-size:12.5px}
+.phone{width:280px;height:540px;border-radius:36px;padding:6px;background:var(--surface);border:2px solid var(--frame)}
+.scr{height:100%;border-radius:28px;background:var(--ph-bg);color:var(--ph-text);overflow:hidden;display:flex;flex-direction:column;font-family:var(--sans);font-size:14px;line-height:1.35}
+.scr .bar{height:28px;flex:none;display:flex;justify-content:center;align-items:flex-end}
+.scr .bar i{width:84px;height:20px;border-radius:12px;background:var(--frame);display:block}
+.pt-top{display:flex;align-items:center;gap:10px;padding:8px 14px 10px;border-bottom:.5px solid rgba(128,128,128,.3);flex:none}
+.pt-top .nm{font-weight:600;font-size:14px;line-height:1.2}
+.pt-top .nm small{display:block;font-weight:400;font-size:11.5px;color:var(--ph-mute)}
+.ring{padding:2px;border-radius:50%;background:linear-gradient(45deg,#FEDA75,#FA7E1E,#D62976,#962FBF,#4F5BD5);display:inline-flex;flex:none}
+.ring .pa{border:2px solid var(--ph-bg)}
+.pa{width:32px;height:32px;border-radius:50%;object-fit:cover;background:#8e8e8e;display:grid;place-items:center;color:#fff;font:600 12px var(--sans);flex:none;overflow:hidden}
+.pa.s{width:24px;height:24px;font-size:10px}
+.thread{flex:1;padding:12px 12px 8px;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;gap:2px}
+.tstamp{text-align:center;font-size:11.5px;color:var(--ph-mute);margin:0 0 10px}
+.mr{display:flex;align-items:flex-end;gap:6px}
+.mr .sp{width:24px;flex:none}
+.mc{display:flex;flex-direction:column;gap:2px;min-width:0;max-width:78%}
+.bub{background:var(--ph-bubble);padding:9px 14px;border-radius:18px;overflow-wrap:anywhere;white-space:pre-wrap}
+.bub.a{border-bottom-left-radius:5px}
+.bub.ph-empty{color:var(--ph-mute)}
+.lcard{background:var(--ph-bubble);border-radius:5px 18px 18px 18px;padding:10px 14px;display:flex;gap:10px;align-items:center;text-decoration:none;color:inherit;min-width:0}
+.lcard>div{min-width:0;flex:1}
+.lcard b{display:block;font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lcard small{display:block;font-size:12px;color:var(--ph-mute);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lcard svg{color:var(--ph-mute)}
+.dlv{font-size:11px;color:var(--ph-mute);text-align:right;margin-top:6px}
+.cmp{margin:8px 12px 12px;border:.5px solid rgba(128,128,128,.4);border-radius:22px;padding:9px 14px;color:var(--ph-mute);flex:none}
+.cm{display:flex;gap:10px;padding:10px 14px;align-items:flex-start}
+.cm.re{padding-left:56px}
+.cm .b{min-width:0;font-size:13.5px}
+.cm .b b{font-weight:600;margin-right:6px}
+.cm .b em{font-style:normal;color:var(--ph-link)}
+.cm .m{font-size:12px;color:var(--ph-mute);margin-top:4px}
+.cm .au{font-size:11.5px;color:var(--ph-mute)}
+.cm.none{color:var(--ph-mute);font-size:12.5px}
+
+/* toasts */
+#toasts{position:fixed;left:0;right:0;bottom:calc(24px + env(safe-area-inset-bottom));z-index:80;display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none;padding:0 16px}
+.toast{pointer-events:auto;display:flex;align-items:center;gap:10px;max-width:min(460px,100%);padding:10px 14px;border-radius:12px;background:var(--ink);color:var(--bg);box-shadow:var(--shadow)}
+.toast .dot{flex:none}
+.toast.error .dot{background:var(--bad)}.toast.ok .dot{background:var(--ok)}.toast.info .dot{background:var(--bg)}
+
+/* login */
+.lg{min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px 16px;position:relative}
+.lg>.mark{position:absolute;left:32px;top:24px}
+.lg form{width:min(360px,100%);padding:28px;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:none}
+.lg h1{font-size:20px;font-weight:600;letter-spacing:-.01em;margin-bottom:20px}
+.lg label{display:block;font-weight:500;font-size:12px;color:var(--ink-2);margin-bottom:6px}
+.lg .in{min-height:36px}
+.lg .help{margin-top:8px}
+.lg .btn{width:100%;margin-top:20px;min-height:36px}
+.lg code{font:inherit;font-weight:600;color:var(--ink)}
+.boot{padding:96px 24px;max-width:960px;margin:0 auto;color:var(--ink-2)}
+
+@media (max-width:1199px){
+  .drawer{width:min(600px,100%)}
+  .db{display:flex;flex-direction:column;align-items:stretch}
+  .db>*{flex:none}
+  .dp{position:static;padding:0 24px 24px;border-top:1px solid var(--line)}
+  .dp summary{display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:500;min-height:40px;width:100%}
+  .dp details:not([open]) .pvb{display:none}
+  .pvb{display:flex;flex-direction:column;align-items:center;gap:12px;padding-bottom:16px}
+  .dp{align-items:stretch}
+  .acts-hide{display:none}
+}
+@media (min-width:901px){.pvb{display:flex;flex-direction:column;align-items:center;gap:12px}}
+@media (max-width:760px){
+  .act{grid-template-columns:1fr auto;gap:4px 12px}
+  .act.hd{display:none}
+  .act .t{grid-column:1/-1;grid-row:2;white-space:normal}
+  .act .a{grid-column:1;grid-row:3}
+  .act .st{grid-column:2;grid-row:3;justify-self:end}
+  .act .tm{grid-column:2;grid-row:1}
+  .sec{grid-template-columns:1fr;gap:12px}
+}
+@media (max-width:640px){
+  .in{font-size:16px}
+  .lg>.mark{position:static;margin-bottom:24px}
+  .top-in{padding:0 16px;gap:12px}
+  .tabs,.acct .un{display:none}
+  .health span:last-child{max-width:140px}
+  main{padding:20px 16px calc(88px + env(safe-area-inset-bottom))}
+  .banners{padding:0 16px}
+  .banner{flex-direction:column}
+  .btab{display:grid;grid-template-columns:repeat(4,1fr);position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+  .btab a{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:56px;font-size:11px;font-weight:500;color:var(--ink-3);text-decoration:none}
+  .btab a[aria-current=page]{color:var(--ink)}
+  .btab svg{width:22px;height:22px}
+  .btn{min-height:36px}.btn.sm{min-height:36px}.btn.icon{width:36px}
+  .ph .btn .lgt{display:none}
+  .ph .btn .sht{display:inline}
+  .stats{grid-template-columns:1fr 1fr;margin-bottom:16px}
+  .stat{padding:10px 14px}
+  .stat:nth-child(3){border-left:0}
+  .stat:nth-child(n+3){border-top:1px solid var(--line)}
+  .stat .v{font-size:20px;margin-top:0}
+  .row{grid-template-columns:44px minmax(0,1fr) auto;padding:14px 12px 14px 16px;min-height:56px}
+  .grip{display:none}
+  .sw{width:44px;height:26px;border-radius:13px}
+  .sw i{width:22px;height:22px}
+  .sw[aria-checked=true] i{transform:translateX(18px)}
+  .rside .btn{display:none}
+  .rside .more{opacity:1;width:36px;height:32px}
+  .rdm{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+  .ph{align-items:center}
+  .ph .sub{display:none}
+  .ph .btn{flex:none}
+  .drawer{width:100%;border:0;border-radius:0}
+  .dh{padding:0 8px 0 4px;gap:4px}
+  .dh h2{flex:1;text-align:center}
+  .dh .m{display:inline-flex}
+  .dh>label,.dh>.sp,.dh>.xclose{display:none}
+  .dfoot{padding-left:16px;padding-right:16px}
+  .dfoot .nm{display:none}
+  .dfoot.solo{border-top:0}
+  .df{padding:20px 16px 24px}
+  .dp{padding:0 16px 16px}
+  .pgrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:20px 12px}
+  .pick{grid-template-columns:repeat(3,1fr)}
+  .ext{opacity:1}
+  .modal{padding:20px}
+  .tile .ext{opacity:1}
+  .df .enrow{display:flex}
+}
+@media (hover:none){.rside .more,.ext,.cid{opacity:1}}
+.enrow{display:none;align-items:center;justify-content:space-between;margin-bottom:20px;font-size:14px}
+.more{border:0;background:none;width:32px;height:28px;border-radius:6px;color:var(--ink-2);display:grid;place-items:center}
+.more:hover{background:var(--sunk);color:var(--ink)}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="toasts" aria-live="polite" aria-atomic="false"></div>
+<script>
+'use strict';
+const GH = 'https://github.com/theChitranshM/ig-comment-dm';
+const DEFAULT_ACK = 'sent! check your dms';
+const $ = (s, r = document) => r.querySelector(s);
+const root = $('#app');
+const S = {
+  authed: false, overview: null, automations: null, wd: {}, posts: [], postsNext: null, postsLoaded: false,
+  postsLoading: false, activity: null, filter: 'all', tab: null, editor: null, shell: null, ui: {}, timers: [],
+};
+
+/* ---------- dom helpers (everything is built with textContent, never innerHTML on data) ---------- */
+function h(tag, attrs, ...kids) {
+  const el = document.createElement(tag);
+  if (attrs) for (const [k, v] of Object.entries(attrs)) {
+    if (v == null || v === false) continue;
+    if (k === 'class') el.className = v;
+    else if (k === 'value') el.value = v;
+    else if (k === 'checked') el.checked = true;
+    else if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
+    else el.setAttribute(k, v === true ? '' : v);
+  }
+  add(el, kids);
+  return el;
+}
+function add(el, kids) {
+  for (const k of kids.flat(Infinity)) {
+    if (k == null || k === false) continue;
+    el.append(k.nodeType ? k : document.createTextNode(String(k)));
+  }
+  return el;
+}
+const IC = {
+  bolt: '<path d="M13 2 4 14h7l-1 8 9-12h-7z"/>',
+  image: '<rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="1.5"/><path d="m21 15-4.5-4.5L6 21"/>',
+  pulse: '<path d="M3 12h4l3-8 4 16 3-8h4"/>',
+  gear: '<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>', x: '<path d="M6 6l12 12M18 6 6 18"/>', check: '<path d="m5 12.5 4.5 4.5L19 7"/>',
+  up: '<path d="m6 15 6-6 6 6"/>', down: '<path d="m6 9 6 6 6-6"/>', left: '<path d="m15 6-6 6 6 6"/>',
+  ext: '<path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>',
+  comment: '<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/>',
+  copy: '<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h8"/>',
+  dots: '<circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/>',
+  more: '<circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/>',
+  bubble: '<path d="M12 3.5c-4.7 0-8.5 3.2-8.5 7.2 0 2.2 1.2 4.2 3.1 5.5L6 20.5l3.8-2.2c.7.1 1.4.2 2.2.2 4.7 0 8.5-3.2 8.5-7.2S16.7 3.5 12 3.5z"/>',
+  alert: '<path d="M12 3 2 20h20L12 3zM12 10v4M12 17.5v.01"/>',
+};
+function ic(name, size) {
+  const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  s.setAttribute('viewBox', '0 0 24 24'); s.setAttribute('class', 'i'); s.setAttribute('aria-hidden', 'true');
+  if (size) { s.style.width = s.style.height = size + 'px'; }
+  s.innerHTML = IC[name]; return s;
+}
+function logo() { const e = h('span', { class: 'logo', 'aria-hidden': 'true' }); const v = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); v.setAttribute('viewBox', '0 0 24 24'); v.innerHTML = IC.bubble; e.append(v); return e; }
+function wordmark(href) { return h(href ? 'a' : 'div', { class: 'mark', href }, logo(), 'ig-comment-dm'); }
+const safeUrl = (u) => { try { const x = new URL(u); return /^https?:$/.test(x.protocol) ? x.href : null; } catch { return null; } };
+const safeImg = (u) => (typeof u === 'string' && (/^https:\/\//.test(u) || /^data:image\//.test(u))) ? u : null;
+const fmtN = (n) => new Intl.NumberFormat('en').format(n ?? 0);
+const compact = (n) => new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 }).format(n ?? 0);
+const snip = (s, n = 60) => { s = String(s || '').replace(/\s+/g, ' ').trim(); return s.length > n ? s.slice(0, n - 1) + '…' : s; };
+const plural = (n, a, b) => `${fmtN(n)} ${n === 1 ? a : b}`;
+const go = (hash) => { location.hash = hash; };
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+let idn = 0; const nid = (p = 'x') => `${p}${++idn}`;
+
+/* ---------- time ---------- */
+const parseTs = (t) => Date.parse(String(t).replace(/([+-]\d\d)(\d\d)$/, '$1:$2'));
+function rel(t) {
+  const s = (Date.now() - parseTs(t)) / 1000;
+  if (!(s >= 0)) return 'just now';
+  if (s < 45) return 'just now';
+  const m = Math.round(s / 60); if (m < 60) return m + 'm ago';
+  const hr = Math.round(m / 60); if (hr < 24) return hr + 'h ago';
+  const d = Math.round(hr / 24); if (d < 30) return d + 'd ago';
+  return new Date(parseTs(t)).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+const full = (t) => new Date(parseTs(t)).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+function timeEl(t, prose) {
+  if (!t) return h('span', { class: 'mute' }, '–');
+  return h('time', { datetime: new Date(parseTs(t)).toISOString(), title: full(t), 'data-t': t, }, rel(t));
+}
+setInterval(() => document.querySelectorAll('time[data-t]').forEach((e) => { e.textContent = rel(e.dataset.t); }), 30000);
+
+/* ---------- toasts ---------- */
+function toast(msg, kind = 'info', ms) {
+  const el = h('div', { class: 'toast ' + kind }, h('span', { class: 'dot' }), h('span', {}, msg));
+  $('#toasts').append(el);
+  setTimeout(() => { el.style.transition = 'opacity .2s'; el.style.opacity = '0'; setTimeout(() => el.remove(), 220); }, ms || (kind === 'error' ? 6000 : 3600));
+}
+
+/* ---------- api ---------- */
+async function api(method, path, body, o = {}) {
+  let res;
+  try {
+    res = await fetch(path, {
+      method, credentials: 'same-origin',
+      headers: { ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}), ...(method !== 'GET' ? { 'X-Requested-With': 'ig-comment-dm' } : {}) },
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
+  } catch {
+    const e = new Error("Can't reach the server."); e.network = true;
+    if (!o.silent) toast(e.message, 'error'); throw e;
+  }
+  let data = null; try { data = await res.json(); } catch {}
+  if (res.status === 401 && !o.noAuth) { unauthorized(); const e = new Error('Not logged in.'); e.status = 401; throw e; }
+  if (!res.ok) {
+    const e = new Error(data?.error || `Request failed (${res.status}).`); e.status = res.status;
+    if (!o.silent) toast(e.message, 'error'); throw e;
+  }
+  return data;
+}
+function unauthorized() {
+  if (!S.authed && S.shell === null) return;
+  S.authed = false; resetState(); renderLogin();
+}
+function resetState() {
+  clearTimers(); while (layers.length) { const l = layers.pop(); l.wrap.remove(); }
+  syncInert();
+  Object.assign(S, { overview: null, automations: null, wd: {}, posts: [], postsNext: null, postsLoaded: false, activity: null, tab: null, editor: null, shell: null, ui: {} });
+}
+function clearTimers() { S.timers.forEach(clearInterval); S.timers = []; }
+
+/* ---------- layers (drawer, modals) ---------- */
+const layers = [];
+const FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]),textarea:not([disabled]),summary,[tabindex]:not([tabindex="-1"])';
+function focusables(el) { return [...el.querySelectorAll(FOCUSABLE)].filter((e) => e.offsetParent !== null || e === document.activeElement); }
+function syncInert() {
+  root.inert = layers.length > 0;
+  layers.forEach((l, i) => { l.wrap.inert = i < layers.length - 1; });
+  document.body.classList.toggle('lock', layers.length > 0);
+}
+function mountLayer(wrap, opts) {
+  const L = { wrap, prev: document.activeElement, ...opts };
+  layers.push(L); document.body.append(wrap); syncInert();
+  wrap.addEventListener('mousedown', (e) => { if (e.target === wrap) L.close(); });
+  void wrap.offsetWidth; setTimeout(() => wrap.classList.add('in'), 16);
+  setTimeout(() => (opts.focus || focusables(wrap)[0])?.focus(), 40);
+  return L;
+}
+function unmountLayer(L) {
+  const i = layers.indexOf(L); if (i < 0) return;
+  layers.splice(i, 1); L.wrap.inert = true; L.wrap.classList.remove('in'); syncInert();
+  setTimeout(() => L.wrap.remove(), reduced ? 0 : 220);
+  if (L.prev && L.prev.isConnected) L.prev.focus?.();
+}
+document.addEventListener('keydown', (e) => {
+  const top = layers[layers.length - 1];
+  if (e.key === 'Escape' && top) { e.preventDefault(); top.close(); return; }
+  if (e.key === 'Tab' && top) {
+    const f = focusables(top.wrap); if (!f.length) return;
+    const first = f[0], last = f[f.length - 1];
+    if (e.shiftKey && (document.activeElement === first || !top.wrap.contains(document.activeElement))) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    return;
+  }
+  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter' && top?.onSave) { e.preventDefault(); top.onSave(); return; }
+  if (top || !S.authed || e.metaKey || e.ctrlKey || e.altKey) return;
+  if (e.target.closest?.('input,textarea,select,[contenteditable]')) return;
+  const k = e.key.toLowerCase();
+  if (S.gPending) {
+    S.gPending = false;
+    const to = { a: 'automations', p: 'posts', l: 'activity', s: 'settings' }[k];
+    if (to) { e.preventDefault(); go('#/' + to); }
+    return;
+  }
+  if (k === 'g') { S.gPending = true; setTimeout(() => { S.gPending = false; }, 1000); }
+  else if (k === 'n') { e.preventDefault(); go('#/automations/new'); }
+});
+function confirmDialog({ title, body, ok = 'Confirm', danger = false }) {
+  return new Promise((resolve) => {
+    let L;
+    const done = (v) => { unmountLayer(L); resolve(v); };
+    const cancel = h('button', { class: 'btn', type: 'button', onclick: () => done(false) }, 'Cancel');
+    const yes = h('button', { class: 'btn ' + (danger ? 'solid-bad' : 'primary'), type: 'button', onclick: () => done(true) }, ok);
+    const tid = nid('t');
+    const wrap = h('div', { class: 'layer center' }, h('div', { class: 'modal', role: 'alertdialog', 'aria-modal': 'true', 'aria-labelledby': tid },
+      h('h2', { id: tid }, title), body && h('p', {}, body), h('div', { class: 'mfoot' }, cancel, yes)));
+    L = mountLayer(wrap, { close: () => done(false), focus: danger ? cancel : yes });
+  });
+}
+
+/* ---------- shared widgets ---------- */
+function sw(on, label, onchange, fk) {
+  const b = h('button', { type: 'button', role: 'switch', class: 'sw', 'aria-checked': String(!!on), 'aria-label': label, 'data-fk': fk }, h('i'));
+  b.addEventListener('click', () => onchange(b.getAttribute('aria-checked') !== 'true'));
+  return b;
+}
+function segmented(name, opts, val, on, label, cls = '') {
+  const w = h('div', { class: 'seg ' + cls, role: 'radiogroup', 'aria-label': label });
+  for (const [v, text] of opts) {
+    const id = nid('r');
+    const inp = h('input', { type: 'radio', name, id, value: v, checked: v === val });
+    inp.addEventListener('change', () => on(v));
+    w.append(inp, h('label', { for: id }, text));
+  }
+  return w;
+}
+function thumbEl(p) {
+  const src = safeImg(p.thumbnail);
+  if (!src) return h('div', { class: 'thumb-none' }, p.media_type === 'VIDEO' ? 'video' : 'no preview');
+  const img = h('img', { src, alt: '', loading: 'lazy', referrerpolicy: 'no-referrer' });
+  img.addEventListener('error', () => img.replaceWith(h('div', { class: 'thumb-none' }, 'no preview')));
+  return img;
+}
+function avatar(account, cls = 'av') {
+  const src = safeImg(account?.picture);
+  if (src) return h('img', { class: cls, src, alt: '', referrerpolicy: 'no-referrer' });
+  return h('span', { class: cls }, (account?.username || '?')[0].toUpperCase());
+}
+function keepFocus(fn) {
+  const fk = document.activeElement?.dataset?.fk; fn();
+  if (fk) document.querySelector(`[data-fk="${CSS.escape(fk)}"]`)?.focus();
+}
+function copyText(text, label) {
+  navigator.clipboard?.writeText(text).then(() => toast(`Copied ${label}.`, 'ok', 1800), () => toast('Copy blocked by the browser.', 'error'));
+}
+const scopeText = (a) => a.all_posts ? 'All posts' : a.media_ids.length ? `Runs on ${plural(a.media_ids.length, 'post', 'posts')}` : 'No posts selected';
+
+/* ---------- health ---------- */
+function healthIssues(hl) {
+  const out = [];
+  if (!hl.token) out.push({ short: 'Not connected', msg: 'No Instagram access token is saved.', fix: 'Reconnect Instagram to issue a new one.', re: true, sev: 'bad' });
+  else if (!hl.account) out.push({ short: 'Instagram disconnected', msg: 'Instagram rejected the saved token' + (hl.account_error ? ` (${String(hl.account_error).replace(/\.+$/, '')})` : '') + '. Nothing can be sent until it works again.', fix: 'Reconnect Instagram to refresh access.', re: true, sev: 'bad' });
+  if (!hl.webhook_callback) out.push({ short: 'Webhook misdirected', msg: "Instagram isn't delivering comments to this Worker. The callback URL in your Meta app points somewhere else.", fix: 'Fix the callback URL in your Meta app, then run npm run admin -- check.', sev: 'warn' });
+  if (!hl.webhook_comments) out.push({ short: 'Comments not subscribed', msg: "Your Meta app isn't subscribed to the comments field, so new comments won't arrive live.", fix: 'Subscribe to comments under Webhooks, Instagram, in your Meta app. Polling still catches them within 5 minutes.', sev: 'warn' });
+  if (!hl.account_subscribed) out.push({ short: 'Account not subscribed', msg: "Your Instagram account isn't subscribed to this app.", fix: 'Run npm run admin -- subscribe.', sev: 'warn' });
+  if (!out.length && hl.ok === false) out.push({ short: 'Needs attention', msg: 'A health check is failing.', fix: 'Run npm run admin -- check for details.', sev: 'warn' });
+  return out;
+}
+async function reconnect(btn) {
+  if (btn) btn.disabled = true;
+  const w = window.open('', '_blank');
+  try {
+    const r = await api('POST', '/api/reconnect');
+    const link = safeUrl(r.link);
+    if (!link) throw new Error('The server returned an invalid link.');
+    if (w) { w.opener = null; w.location = link; } else window.open(link, '_blank', 'noopener');
+    toast('Finish connecting in the new tab, then come back here.', 'info', 6000);
+  } catch (e) { w?.close(); if (e.status !== 401 && !e.network) toast(e.message, 'error'); }
+  finally { if (btn) btn.disabled = false; }
+}
+async function setDryRun(on) {
+  const cur = S.overview?.settings || {};
+  const body = { dry_run: on, ...(cur.exclude_media_ids ? { exclude_media_ids: cur.exclude_media_ids } : {}) };
+  const r = await api('PUT', '/api/settings', body);
+  S.overview.settings = { ...cur, ...r.settings }; renderChrome();
+  if (S.tab === 'settings') buildView('settings');
+  toast(on ? 'Preview mode on. Nothing will be sent.' : 'Preview mode off. DMs are live.', on ? 'info' : 'ok');
+}
+
+/* ---------- login ---------- */
+function renderLogin() {
+  clearTimers(); S.shell = null;
+  const key = h('input', { class: 'in', id: 'key', type: 'password', autocomplete: 'current-password', spellcheck: 'false', autofocus: true, 'aria-describedby': 'key-help' });
+  const err = h('p', { class: 'err', role: 'alert', hidden: true, style: 'margin-top:8px' });
+  const btn = h('button', { class: 'btn primary', type: 'submit' }, 'Sign in');
+  const form = h('form', { onsubmit: async (e) => {
+    e.preventDefault(); if (!key.value) { key.focus(); return; }
+    btn.disabled = true; err.hidden = true;
+    try {
+      await api('POST', '/api/login', { key: key.value }, { noAuth: true, silent: true });
+      key.value = ''; S.authed = true; await boot();
+    } catch (ex) {
+      key.value = '';
+      err.textContent = ex.status === 401 ? "That key didn't work. Check ADMIN_KEY in your .secrets.local." : ex.message;
+      err.hidden = false; key.focus();
+    } finally { btn.disabled = false; }
+  } }, h('h1', {}, 'Sign in to your dashboard'), h('label', { for: 'key' }, 'Admin key'), key, err,
+  h('p', { class: 'help', id: 'key-help' }, 'It\'s ', h('code', {}, 'ADMIN_KEY'), ' in your ', h('code', {}, '.secrets.local'), '.'), btn);
+  root.replaceChildren(h('div', { class: 'lg' }, wordmark(), form));
+  document.title = 'Sign in · ig-comment-dm';
+  setTimeout(() => key.focus(), 30);
+}
+
+/* ---------- shell ---------- */
+const TABS = [['automations', 'Automations', 'bolt'], ['posts', 'Posts', 'image'], ['activity', 'Activity', 'pulse'], ['settings', 'Settings', 'gear']];
+function ensureShell() {
+  if (S.shell) return;
+  const nav = h('nav', { class: 'tabs', 'aria-label': 'Primary' }, TABS.map(([k, t]) => h('a', { href: '#/' + k, 'data-tab': k }, t)));
+  const health = h('a', { class: 'health', href: '#/settings' });
+  const acct = h('div', { class: 'acct' });
+  const banners = h('div', { class: 'banners' });
+  const main = h('main', { id: 'main', tabindex: '-1' });
+  const btab = h('nav', { class: 'btab', 'aria-label': 'Primary' }, TABS.map(([k, t, i]) => h('a', { href: '#/' + k, 'data-tab': k }, ic(i, 20), t)));
+  root.replaceChildren(
+    h('header', { class: 'top' }, h('div', { class: 'top-in' }, wordmark('#/automations'), nav, h('div', { class: 'top-r' }, health, acct))),
+    banners, main, btab);
+  S.shell = { nav, btab, health, acct, banners, main };
+  renderChrome();
+}
+function renderChrome() {
+  const sh = S.shell; if (!sh) return;
+  const o = S.overview;
+  sh.acct.replaceChildren();
+  if (o?.account) { sh.acct.title = `${compact(o.account.followers)} followers`; sh.acct.append(avatar(o.account), h('span', { class: 'un' }, '@' + o.account.username)); }
+  sh.health.replaceChildren();
+  sh.banners.replaceChildren();
+  if (!o) { sh.health.append(h('span', { class: 'dot' }), h('span', {}, 'Checking…')); return; }
+  const issues = o.health.ok ? [] : healthIssues(o.health);
+  const bad = issues.some((i) => i.sev === 'bad');
+  sh.health.append(h('span', { class: 'dot ' + (issues.length ? (bad ? 'bad' : 'warn') : 'ok') }),
+    h('span', {}, issues.length ? issues[0].short + (issues.length > 1 ? ` +${issues.length - 1}` : '') : 'All systems go'));
+  sh.health.title = issues.length ? issues.map((i) => i.msg).join(' ') : 'Token, account and webhooks all check out.';
+  if (issues.length) {
+    const re = issues.some((i) => i.re);
+    const rb = h('button', { class: 'btn sm', type: 'button', onclick: (e) => reconnect(e.currentTarget) }, 'Reconnect Instagram');
+    sh.banners.append(h('div', { class: 'banner ' + (bad ? 'bad' : ''), role: 'alert' },
+      h('div', {}, h('strong', {}, bad ? "Instagram isn't connected." : 'Comments might arrive late.'),
+        h('ul', {}, issues.map((i) => h('li', {}, i.msg, h('span', { class: 'mute' }, i.fix))))),
+      h('div', { class: 'acts' }, re && rb, h('a', { class: 'btn sm', href: '#/settings' }, 'Details'))));
+  }
+  if (o.settings?.dry_run) {
+    sh.banners.append(h('div', { class: 'banner info', role: 'status' },
+      h('div', {}, h('strong', {}, 'Preview mode.'), ' Nothing is being sent. Comments are matched and logged, DMs and replies are skipped.'),
+      h('div', { class: 'acts' }, h('button', { class: 'btn sm', type: 'button', onclick: (e) => { e.currentTarget.disabled = true; setDryRun(false).catch(() => { e.currentTarget.disabled = false; }); } }, 'Turn off'))));
+  }
+}
+async function loadOverview() {
+  const o = await api('GET', '/api/overview'); S.overview = o; renderChrome(); S.ui.renderStats?.(); return o;
+}
+async function loadAutomations() {
+  const r = await api('GET', '/api/automations'); S.automations = r.automations; return r.automations;
+}
+const invalidatePosts = () => { S.posts = []; S.postsNext = null; S.postsLoaded = false; };
+async function loadPosts(more) {
+  if (S.postsLoading) return; S.postsLoading = true;
+  try {
+    const q = `?limit=24${more && S.postsNext ? '&after=' + encodeURIComponent(S.postsNext) : ''}`;
+    const r = await api('GET', '/api/posts' + q);
+    S.posts = more ? S.posts.concat(r.posts) : r.posts; S.postsNext = r.next; S.postsLoaded = true;
+  } finally { S.postsLoading = false; }
+}
+
+/* ---------- router ---------- */
+function parseRoute() {
+  const [p, q] = (location.hash.slice(1) || '/automations').split('?');
+  const seg = p.split('/').filter(Boolean);
+  const tab = TABS.some((t) => t[0] === seg[0]) ? seg[0] : 'automations';
+  return { tab, id: tab === 'automations' ? seg[1] || null : null, post: new URLSearchParams(q || '').get('post') };
+}
+function route() {
+  if (!S.authed) return;
+  ensureShell();
+  const r = parseRoute();
+  S.shell.nav.querySelectorAll('a').forEach((a) => a.toggleAttribute('aria-current', false));
+  document.querySelectorAll('[data-tab]').forEach((a) => { if (a.dataset.tab === r.tab) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
+  if (S.tab !== r.tab) { S.tab = r.tab; buildView(r.tab); window.scrollTo(0, 0); }
+  document.title = TABS.find((t) => t[0] === r.tab)[1] + ' · ig-comment-dm';
+  syncEditor(r);
+}
+function buildView(tab) {
+  clearTimers(); S.ui = {};
+  S.shell.main.replaceChildren();
+  ({ automations: viewAutomations, posts: viewPosts, activity: viewActivity, settings: viewSettings })[tab](S.shell.main);
+}
+function pageHead(title, sub, action) {
+  return h('div', { class: 'ph' }, h('div', {}, h('h1', {}, title), sub && h('p', { class: 'sub' }, sub)), action);
+}
+function skRows(n, hgt = 72) { return Array.from({ length: n }, () => h('div', { class: 'sk', style: `height:${hgt}px;margin:0 0 12px` })); }
+
+/* ---------- automations view ---------- */
+function viewAutomations(main) {
+  const stats = h('div', { class: 'stats' });
+  const list = h('div', { class: 'rows' });
+  const sub = h('p', { class: 'sub' }, 'When two match, the one higher in the list wins.');
+  const nb = h('button', { class: 'btn primary', type: 'button', onclick: () => go('#/automations/new') }, ic('plus', 14), h('span', { class: 'lgt' }, 'New automation'), h('span', { class: 'sht' }, 'New'));
+  S.ui.newBtn = nb;
+  main.append(h('div', { class: 'ph' }, h('div', {}, h('h1', {}, 'Automations'), sub),
+    nb), stats, list);
+  S.ui.renderStats = () => {
+    const t = S.overview?.totals;
+    const cell = (k, v, s, cls = '') => h('div', { class: 'stat' }, h('div', { class: 'k' }, k),
+      v == null ? h('div', { class: 'sk', style: 'height:24px;width:48px;margin:4px 0' }) : h('div', { class: 'v ' + cls }, fmtN(v)), s);
+    stats.replaceChildren(
+      cell('Live', t?.active, h('div', { class: 's' }, t ? `of ${plural(t.automations, 'automation', 'automations')}` : ' ')),
+      cell('Sent, last 24h', t?.sent_24h, h('div', { class: 's' }, t ? `${fmtN(t.sent_total)} all time` : ' ')),
+      cell('Pending', t?.pending, h('div', { class: 's' }, t ? (t.pending ? 'queued or awaiting a reply' : 'nothing queued') : ' ')),
+      cell('Failed', t?.failed, h('div', { class: 's' }, t?.failed ? h('a', { href: '#/activity', onclick: () => { S.filter = 'failed'; } }, 'View failures') : t ? 'none' : ' '), t?.failed ? 'bad' : ''));
+  };
+  S.ui.renderList = () => renderRows(list);
+  S.ui.renderStats(); list.replaceChildren(...skRows(3, 96));
+  Promise.all([loadOverview(), loadAutomations()]).then(() => {
+    if (S.tab !== 'automations') return; renderRows(list); loadWaiting(S.automations);
+  }).catch(() => { if (!S.automations) list.replaceChildren(retryBlock(() => buildView('automations'))); });
+}
+function retryBlock(fn) {
+  return h('div', { class: 'empty' }, h('h2', {}, 'Couldn’t load that.'), h('p', {}, 'The server didn’t answer. Check that it’s running.'), h('button', { class: 'btn', type: 'button', onclick: fn }, 'Try again'));
+}
+function renderRows(list) {
+  const arr = S.automations; if (!arr) return;
+  S.ui.newBtn?.classList.toggle('primary', arr.length > 0);
+  keepFocus(() => {
+    if (!arr.length) {
+      list.replaceChildren(h('div', { class: 'empty' }, h('h2', {}, 'No automations yet'),
+        h('p', {}, 'Choose a post and a keyword. Anyone who comments that keyword gets your message.'),
+        h('button', { class: 'btn primary', type: 'button', onclick: () => go('#/automations/new') }, ic('plus', 14), 'New automation')));
+      return;
+    }
+    list.replaceChildren(...arr.map((a, i) => automationRow(a, i, arr.length, list)));
+  });
+}
+function automationRow(a, i, n, list) {
+  const s = a.stats || {};
+  const wait = h('button', { class: 'wait', type: 'button', 'data-pill': a.id, hidden: true, onclick: () => openWaiting(a) });
+  const edit = '#/automations/' + encodeURIComponent(a.id);
+  const more = h('button', { class: 'more', type: 'button', 'aria-label': `More actions for ${a.name}`, 'aria-haspopup': 'menu', 'data-fk': 'm' + a.id, onclick: (e) => { e.stopPropagation(); openRowMenu(e.currentTarget, a, i, n); } }, ic('more', 18));
+  const row = h('div', { class: 'row' + (a.enabled ? '' : ' off'), 'data-id': a.id },
+    h('div', { class: 'grip', title: 'Drag to reorder', 'aria-hidden': 'true' }, ic('dots')),
+    h('div', { style: 'padding-top:2px' }, sw(a.enabled, `${a.enabled ? 'Pause' : 'Enable'} ${a.name}`, (on) => toggleEnabled(a, on), 'sw' + a.id)),
+    h('div', { style: 'min-width:0' },
+      h('div', { class: 'rname' }, h('a', { href: edit }, a.name || a.keyword),
+        h('span', { class: 'st', style: 'font-size:13px;color:var(--ink-3)' }, h('span', { class: 'dot ' + (a.enabled ? 'ok' : '') }), a.enabled ? 'Live' : 'Paused')),
+      h('div', { class: 'toks' }, h('span', { class: 'tok' }, a.keyword), a.aliases.map((x) => h('span', { class: 'tok alias' }, x)),
+        h('span', { class: 'mute', style: 'font-size:12px' }, a.match === 'fuzzy' ? 'Fuzzy match' : 'Exact match')),
+      h('p', { class: 'rdm' }, a.dm),
+      h('div', { class: 'rmeta' },
+        h('span', { class: !a.all_posts && !a.media_ids.length ? 'warn' : '' }, scopeText(a)),
+        s.sent ? h('span', {}, `Sent to ${fmtN(s.sent)}`) : h('span', {}, 'Nothing sent yet'),
+        s.last_sent_at ? h('span', {}, 'Last sent ', timeEl(s.last_sent_at)) : '',
+        s.failed ? h('span', { class: 'bad' }, `${fmtN(s.failed)} failed`) : '', wait)),
+    h('div', { class: 'rside' }, h('a', { class: 'btn sm', href: edit }, 'Edit'), more));
+  row.addEventListener('click', (e) => { if (!e.target.closest('button,a,input,.sw')) go(edit); });
+  // drag to reorder (mouse); up/down buttons cover keyboard + touch
+  const rank = row.querySelector('.grip');
+  rank.addEventListener('mousedown', () => { row.draggable = true; });
+  row.addEventListener('dragend', () => { row.draggable = false; row.classList.remove('dragging'); list.querySelectorAll('.drop-before,.drop-after').forEach((x) => x.classList.remove('drop-before', 'drop-after')); });
+  row.addEventListener('dragstart', (e) => { e.dataTransfer.setData('text/plain', a.id); e.dataTransfer.effectAllowed = 'move'; row.classList.add('dragging'); S.dragId = a.id; });
+  row.addEventListener('dragover', (e) => {
+    if (!S.dragId || S.dragId === a.id) return; e.preventDefault();
+    const r = row.getBoundingClientRect(), before = e.clientY < r.top + r.height / 2;
+    row.classList.toggle('drop-before', before); row.classList.toggle('drop-after', !before);
+  });
+  row.addEventListener('dragleave', () => row.classList.remove('drop-before', 'drop-after'));
+  row.addEventListener('drop', (e) => {
+    e.preventDefault(); const before = row.classList.contains('drop-before'); row.classList.remove('drop-before', 'drop-after');
+    const from = S.automations.findIndex((x) => x.id === S.dragId); S.dragId = null; if (from < 0) return;
+    const prev = [...S.automations]; const [m] = S.automations.splice(from, 1);
+    let to = S.automations.findIndex((x) => x.id === a.id); if (!before) to++;
+    S.automations.splice(to, 0, m); commitOrder(prev);
+  });
+  if (S.wd[a.id]?.length) setPill(wait, S.wd[a.id].length);
+  return row;
+}
+/* row overflow menu */
+function closeMenu(refocus) {
+  const m = S.menu; if (!m) return; S.menu = null; m.el.remove(); m.btn.setAttribute('aria-expanded', 'false');
+  document.removeEventListener('mousedown', m.out, true); window.removeEventListener('scroll', m.sc, true);
+  if (refocus) m.btn.focus();
+}
+function openRowMenu(btn, a, i, n) {
+  if (S.menu?.btn === btn) { closeMenu(true); return; }
+  closeMenu();
+  const item = (label, fn, cls) => h('button', { type: 'button', role: 'menuitem', class: cls || '', onclick: () => { closeMenu(); fn(); } }, label);
+  const el = h('div', { class: 'menu', role: 'menu', 'aria-label': `Actions for ${a.name}` },
+    item('Edit', () => go('#/automations/' + encodeURIComponent(a.id))),
+    i > 0 && item('Move up', () => moveRow(a.id, -1)), i < n - 1 && item('Move down', () => moveRow(a.id, 1)),
+    item('Duplicate', () => duplicateAutomation(a)), h('hr'), item('Delete', () => deleteAutomation(a), 'danger'));
+  document.body.append(el);
+  const r = btn.getBoundingClientRect(), mh = el.offsetHeight;
+  el.style.right = Math.max(8, innerWidth - r.right) + 'px';
+  el.style.top = (r.bottom + 4 + mh > innerHeight ? Math.max(8, r.top - mh - 4) : r.bottom + 4) + 'px';
+  btn.setAttribute('aria-expanded', 'true');
+  const out = (e) => { if (!el.contains(e.target) && e.target !== btn && !btn.contains(e.target)) closeMenu(); };
+  const sc = () => closeMenu();
+  document.addEventListener('mousedown', out, true); window.addEventListener('scroll', sc, true);
+  S.menu = { el, btn, out, sc };
+  const items = [...el.querySelectorAll('button')];
+  el.addEventListener('keydown', (e) => {
+    const k = items.indexOf(document.activeElement);
+    if (e.key === 'ArrowDown') { e.preventDefault(); items[(k + 1) % items.length].focus(); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); items[(k - 1 + items.length) % items.length].focus(); }
+    else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeMenu(true); }
+    else if (e.key === 'Tab') closeMenu();
+  });
+  items[0].focus();
+}
+async function duplicateAutomation(a) {
+  try {
+    const r = await api('POST', '/api/automations', { name: `${a.name} copy`, enabled: false, keyword: a.keyword, aliases: a.aliases, match: a.match, dm: a.dm, link: a.link, ack: a.ack, all_posts: a.all_posts, media_ids: a.media_ids });
+    S.automations.push(r.automation); invalidatePosts(); S.ui.renderList?.(); loadOverview().catch(() => {});
+    toast('Duplicated as a paused copy.', 'ok');
+  } catch {}
+}
+async function deleteAutomation(a) {
+  if (!await confirmDialog({ title: `Delete “${a.name}”?`, body: 'Comments with this keyword stop triggering it. DMs already sent stay sent.', ok: 'Delete', danger: true })) return;
+  try {
+    await api('DELETE', `/api/automations/${encodeURIComponent(a.id)}`);
+    S.automations = S.automations.filter((x) => x.id !== a.id); delete S.wd[a.id]; invalidatePosts(); S.ui.renderList?.();
+    loadOverview().catch(() => {}); toast(`Deleted ${a.name}.`, 'ok');
+  } catch {}
+}
+function setPill(btn, n) { btn.hidden = !n; btn.replaceChildren(h('span', { class: 'dot warn' }), `${plural(n, 'person', 'people')} waiting`); }
+function updatePills(id) { document.querySelectorAll(`[data-pill="${CSS.escape(id)}"]`).forEach((b) => setPill(b, S.wd[id]?.length || 0)); }
+async function loadWaiting(list, force) {
+  const q = list.filter((a) => a.enabled && (force || !(a.id in S.wd))); let i = 0;
+  const worker = async () => {
+    while (i < q.length) {
+      const a = q[i++];
+      try { S.wd[a.id] = (await api('GET', `/api/automations/${encodeURIComponent(a.id)}/waiting`, undefined, { silent: true })).comments; }
+      catch (e) { if (e.status === 401) return; S.wd[a.id] = []; }
+      updatePills(a.id);
+    }
+  };
+  await Promise.all([worker(), worker(), worker()]);
+}
+async function moveRow(id, dir) {
+  const arr = S.automations, i = arr.findIndex((a) => a.id === id), j = i + dir; if (j < 0 || j >= arr.length) return;
+  const prev = [...arr]; [arr[i], arr[j]] = [arr[j], arr[i]];
+  S.ui.renderList?.(); document.querySelector(`[data-fk="m${CSS.escape(id)}"]`)?.focus();
+  await commitOrder(prev, true);
+}
+async function commitOrder(prev, noRender) {
+  if (!noRender) S.ui.renderList?.();
+  try { await api('POST', '/api/automations/reorder', { ids: S.automations.map((a) => a.id) }); }
+  catch { S.automations = prev; S.ui.renderList?.(); }
+}
+async function toggleEnabled(a, on) {
+  const prev = a.enabled; a.enabled = on; S.ui.renderList?.();
+  try {
+    const r = await api('PUT', `/api/automations/${encodeURIComponent(a.id)}`, { enabled: on });
+    Object.assign(a, r.automation); S.ui.renderList?.(); invalidatePosts(); delete S.wd[a.id];
+    loadOverview().catch(() => {}); loadWaiting([a]);
+    toast(on ? `${a.name} is live.` : `${a.name} paused.`, 'ok', 2200);
+  } catch { a.enabled = prev; S.ui.renderList?.(); }
+}
+
+/* ---------- waiting dialog ---------- */
+async function openWaiting(a, pre) {
+  let comments = pre;
+  if (!comments) {
+    try { comments = (await api('GET', `/api/automations/${encodeURIComponent(a.id)}/waiting`)).comments; S.wd[a.id] = comments; updatePills(a.id); } catch { return; }
+  }
+  if (!comments.length) { toast('Nobody is waiting on this one.', 'info'); return; }
+  let L; const sel = new Set(comments.map((c) => c.comment_id));
+  const send = h('button', { class: 'btn primary', type: 'button' });
+  const all = h('input', { type: 'checkbox', id: 'wall', checked: true });
+  const upd = () => { send.textContent = sel.size ? `Send to ${sel.size}` : 'Send'; send.disabled = !sel.size; all.checked = sel.size === comments.length; all.indeterminate = sel.size > 0 && sel.size < comments.length; };
+  all.addEventListener('change', () => { sel.clear(); if (all.checked) comments.forEach((c) => sel.add(c.comment_id)); list.querySelectorAll('input').forEach((i) => { i.checked = all.checked; }); upd(); });
+  const list = h('div', { class: 'wlist' }, comments.map((c) => {
+    const cb = h('input', { type: 'checkbox', checked: true, 'aria-label': `Send to ${c.user}` });
+    cb.addEventListener('change', () => { cb.checked ? sel.add(c.comment_id) : sel.delete(c.comment_id); upd(); });
+    return h('label', { class: 'wi' }, cb, h('div', {}, h('div', {}, h('span', { class: 'u' }, '@' + c.user), ' ', h('span', { class: 'mute', style: 'font-size:12px' }, timeEl(c.timestamp))), h('div', { class: 't' }, c.text)));
+  }));
+  const close = () => unmountLayer(L);
+  send.addEventListener('click', async () => {
+    send.disabled = true; send.textContent = 'Sending…';
+    try {
+      const r = await api('POST', `/api/automations/${encodeURIComponent(a.id)}/send-waiting`, { comment_ids: [...sel] });
+      close();
+      toast(`Sent ${r.sent}${r.queued ? `, ${r.queued} queued (out within 5 minutes)` : ''}${r.failed ? `, ${r.failed} failed` : ''}.`, r.failed ? 'error' : 'ok');
+      delete S.wd[a.id]; loadWaiting([a], true); loadOverview().catch(() => {}); if (S.tab === 'activity') S.ui.refresh?.();
+    } catch { upd(); }
+  });
+  const tid = nid('t');
+  L = mountLayer(h('div', { class: 'layer center' }, h('div', { class: 'modal wide', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': tid },
+    h('h2', { id: tid }, `${plural(comments.length, 'person', 'people')} commented before this was on.`),
+    h('p', {}, `Send them the DM now? These are older comments on ${a.name}’s posts that match and haven’t been answered.`),
+    h('div', { style: 'margin-top:16px' }, h('label', { class: 'chkrow', style: 'padding-bottom:8px' }, all, 'Select all')), list,
+    h('div', { class: 'mfoot' }, h('button', { class: 'btn', type: 'button', onclick: close }, 'Not now'), send))), { close });
+  upd();
+}
+
+/* ---------- posts view ---------- */
+function viewPosts(main) {
+  const grid = h('div', { class: 'pgrid' }); const more = h('div', { class: 'more' });
+  main.append(pageHead('Posts', 'Choose which posts an automation runs on. Only new comments are sent automatically.'), grid, more);
+  const render = () => {
+    grid.replaceChildren(...S.posts.map((p, i) => {
+      const chips = (p.automation_ids || []).map((id) => S.automations?.find((a) => a.id === id)).filter(Boolean);
+      const url = safeUrl(p.permalink);
+      return h('article', { class: 'pc', style: `animation-delay:${Math.min(i % 12, 8) * 25}ms` },
+        h('div', { class: 'pt' }, thumbEl(p), p.trial && h('span', { class: 'tag' }, 'Trial'),
+          url && h('a', { class: 'ext', href: url, target: '_blank', rel: 'noopener noreferrer', 'aria-label': 'Open on Instagram' }, ic('ext', 14))),
+        h('div', { class: 'pmeta' }, h('time', { datetime: new Date(parseTs(p.timestamp)).toISOString(), title: full(p.timestamp) }, new Date(parseTs(p.timestamp)).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })),
+          h('span', { class: 'num', title: 'Comments' }, ic('comment', 13), fmtN(p.comments_count))),
+        h('div', { class: 'pcap', title: p.caption || '' }, p.caption || '(no caption)'),
+        h('div', { class: 'pchips' }, chips.length ? chips.map((a) => h('a', { class: 'tok', href: '#/automations/' + encodeURIComponent(a.id), title: a.name }, a.keyword)) : h('span', { class: 'mute', style: 'font-size:12.5px' }, 'No automation')),
+        h('button', { class: 'btn sm', type: 'button', onclick: () => go('#/automations/new?post=' + encodeURIComponent(p.id)) }, ic('plus', 13), 'Add automation'));
+    }));
+    more.replaceChildren(S.postsNext ? h('button', { class: 'btn', type: 'button', onclick: async (e) => { e.currentTarget.disabled = true; try { await loadPosts(true); } catch {} render(); } }, 'Load more') : '');
+  };
+  const skel = () => grid.replaceChildren(...Array.from({ length: 8 }, () => h('div', {}, h('div', { class: 'sk', style: 'aspect-ratio:4/5' }), h('div', { class: 'sk', style: 'height:14px;margin-top:10px;width:70%' }))));
+  skel();
+  Promise.all([S.automations ? 0 : loadAutomations(), S.postsLoaded ? 0 : loadPosts(false)]).then(() => { if (S.tab === 'posts') render(); })
+    .catch(() => grid.replaceChildren(retryBlock(() => buildView('posts'))));
+  if (S.postsLoaded && S.automations) { loadPosts(false).then(() => S.tab === 'posts' && render()).catch(() => {}); render(); }
+}
+
+/* ---------- activity view ---------- */
+const STAGES = {
+  done: ['ok', 'Sent'], done_noack: ['ok', 'Sent, no reply'], dm_sent: ['warn', 'DM sent, reply pending'],
+  new: ['warn', 'Queued'], failed: ['bad', 'Failed'],
+};
+const FILTERS = { all: null, sent: ['done', 'done_noack'], failed: ['failed'], pending: ['new', 'dm_sent'] };
+function viewActivity(main) {
+  const bar = h('div', { class: 'filters', role: 'group', 'aria-label': 'Filter by status' });
+  const list = h('div', {});
+  main.append(pageHead('Activity', 'Every comment that matched a keyword, newest first.', h('span', { class: 'live' }, 'Updates every 15 seconds')), bar, list);
+  const render = () => {
+    const items = S.activity;
+    const cnt = (k) => items ? items.filter((x) => !FILTERS[k] || FILTERS[k].includes(x.stage)).length : null;
+    bar.replaceChildren(...Object.keys(FILTERS).map((k) => h('button', { type: 'button', 'aria-pressed': String(S.filter === k), onclick: () => { S.filter = k; render(); } },
+      k[0].toUpperCase() + k.slice(1), items && h('span', { class: 'c' }, cnt(k)))));
+    if (!items) { list.replaceChildren(...skRows(6, 48)); return; }
+    const rows = items.filter((x) => !FILTERS[S.filter] || FILTERS[S.filter].includes(x.stage));
+    if (!rows.length) {
+      list.replaceChildren(h('div', { class: 'empty', style: 'padding-top:32px' }, h('p', { style: 'margin:0;color:var(--ink-2)' },
+        items.length ? 'Nothing matches this filter.' : 'No activity yet. Matching comments will appear here.'))); return;
+    }
+    list.replaceChildren(h('div', { class: 'act hd', 'aria-hidden': 'true' }, h('span', {}, 'User'), h('span', {}, 'Comment'), h('span', {}, 'Automation'), h('span', {}, 'Status'), h('span', { style: 'text-align:right' }, 'When')),
+      ...rows.map((x) => {
+        const [tone, label] = STAGES[x.stage] || ['', x.stage];
+        const st = h('span', { class: 'st', title: x.note || (x.attempts > 1 ? `${x.attempts} attempts` : '') }, h('span', { class: 'dot ' + tone }), label);
+        return h('div', { class: 'act' }, h('span', { class: 'uu' }, h('span', { class: 'u' }, '@' + x.user), h('span', { class: 'src' }, x.source)), h('span', { class: 't', title: x.text }, x.text),
+          h('span', { class: 'a' }, h('span', {}, x.automation_name || '—'), x.keyword && h('span', { class: 'tok alias' }, x.keyword)), st,
+          h('span', { class: 'tm' }, h('button', { class: 'cid', type: 'button', title: `Copy comment id ${x.comment_id}`, 'aria-label': `Copy comment id ${x.comment_id}`, onclick: () => copyText(x.comment_id, 'comment id') }, '…' + String(x.comment_id).slice(-5), ic('copy', 12)), timeEl(x.updated_at)));
+      }));
+  };
+  const refresh = async () => {
+    try { S.activity = (await api('GET', '/api/activity?limit=50', undefined, { silent: true })).items; if (S.tab === 'activity') render(); loadOverview().catch(() => {}); }
+    catch (e) { if (!S.activity && e.status !== 401) list.replaceChildren(retryBlock(() => buildView('activity'))); }
+  };
+  S.ui.refresh = refresh; render(); refresh();
+  S.timers.push(setInterval(() => { if (!document.hidden) refresh(); }, 15000));
+}
+
+/* ---------- settings view ---------- */
+function viewSettings(main) {
+  const o = S.overview;
+  const sec = (title, desc, ...body) => h('section', { class: 'sec' }, h('div', {}, h('h2', {}, title), desc && h('p', { class: 'd' }, desc)), h('div', {}, body));
+  const theme = (() => { try { return localStorage.getItem('igdm-theme') || 'auto'; } catch { return 'auto'; } })();
+  main.append(pageHead('Settings'));
+  if (!o) { main.append(...skRows(3, 80)); loadOverview().then(() => S.tab === 'settings' && buildView('settings')).catch(() => {}); return; }
+  const hl = o.health;
+  const checks = [
+    ['token', 'Access token', 'A token is saved.'], ['account', 'Account access', hl.account_error || 'The token can act on your account.'],
+    ['webhook_callback', 'Webhook callback', 'Your Meta app points at this Worker.'], ['webhook_comments', 'Comments subscription', 'The app receives the comments field.'],
+    ['account_subscribed', 'Account subscription', 'Your account is subscribed to the app.'],
+  ];
+  const ex = o.settings.exclude_media_ids;
+  main.append(
+    sec('Preview mode', 'Run everything except the sending.', h('div', { class: 'line' },
+      h('div', {}, h('div', { style: 'font-weight:500' }, 'Don’t send anything'), h('p', { class: 'help' }, 'Comments are still matched and logged in Activity. No DMs, no public replies. Handy while you test a new keyword.')),
+      sw(o.settings.dry_run, 'Preview mode', (on) => { setDryRun(on).catch(() => buildView('settings')); }, 'dry'))),
+    sec('Excluded posts', 'Skipped even when an automation runs on all posts.',
+      ex?.length ? h('div', { class: 'toks', style: 'margin:0' }, ex.map((id) => { const p = S.posts.find((x) => x.id === id); return h('span', { class: 'tok', title: p?.caption || '' }, id); }))
+        : h('p', { class: 'help' }, ex ? 'None.' : 'Read-only here. Exclusions are managed with the admin CLI.'),
+      ex?.length ? h('p', { class: 'help', style: 'margin-top:8px' }, 'Read-only here. Exclusions are managed with the admin CLI.') : ''),
+    sec('Connection', hl.ok ? 'Everything checks out.' : 'Something needs a look.',
+      h('ul', { class: 'chk-list' }, checks.map(([k, t, okMsg]) => h('li', {}, h('span', { class: 'ic ' + (hl[k] ? 'ok-c' : 'bad-c') }, ic(hl[k] ? 'check' : 'x', 16)),
+        h('div', {}, h('div', { style: 'font-weight:500' }, t), h('div', { class: 'help' }, hl[k] ? okMsg : (k === 'account' && hl.account_error ? hl.account_error : healthIssues({ ...hl, ok: true, token: true, account: true, webhook_callback: true, webhook_comments: true, account_subscribed: true, [k]: false }).concat(k === 'token' ? [{ msg: 'Not set.' }] : [])[0]?.msg || 'Failing.')))))),
+      h('div', { style: 'margin-top:16px' }, h('button', { class: 'btn', type: 'button', onclick: (e) => reconnect(e.currentTarget) }, 'Reconnect Instagram'))),
+    sec('Appearance', null, segmented('theme', [['auto', 'Auto'], ['light', 'Light'], ['dark', 'Dark']], theme, applyTheme, 'Theme')),
+    sec('Keyboard shortcuts', null, h('dl', { class: 'kl' },
+      h('dt', {}, h('kbd', {}, 'N')), h('dd', {}, 'New automation'),
+      h('dt', {}, h('kbd', {}, 'G'), h('kbd', {}, 'A'), h('kbd', {}, 'P'), h('kbd', {}, 'L'), h('kbd', {}, 'S')), h('dd', {}, 'Go to Automations, Posts, Activity, Settings (press G, then the letter)'),
+      h('dt', {}, h('kbd', {}, 'Ctrl'), h('kbd', {}, 'Enter')), h('dd', {}, 'Save in the editor (⌘ Enter on Mac)'),
+      h('dt', {}, h('kbd', {}, 'Esc')), h('dd', {}, 'Close the editor or a dialog'))),
+    sec('How it works', null, h('ol', { class: 'steps' },
+      h('li', {}, h('span', {}, 'Someone comments your keyword on a post you’ve switched on. Typos, stretched letters and accents count in fuzzy mode.')),
+      h('li', {}, h('span', {}, 'They get your DM and link. Each comment is claimed once, so nobody gets it twice.')),
+      h('li', {}, h('span', {}, 'The public reply goes up only after the DM lands. Webhooks are instant; a poll every 5 minutes catches the rest.'))),
+      h('p', { style: 'margin-top:16px' }, h('a', { class: 'link', href: GH, target: '_blank', rel: 'noopener noreferrer' }, 'Read the docs on GitHub'))),
+    sec('Session', null, h('button', { class: 'btn', type: 'button', onclick: async () => { try { await api('POST', '/api/logout'); } catch {} S.authed = false; resetState(); renderLogin(); } }, 'Log out')));
+}
+function applyTheme(mode) {
+  try { mode === 'auto' ? localStorage.removeItem('igdm-theme') : localStorage.setItem('igdm-theme', mode); } catch {}
+  if (mode === 'auto') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = mode;
+}
+
+/* ---------- editor (drawer) ---------- */
+function syncEditor(r) {
+  const want = r.tab === 'automations' && r.id ? `${r.id}|${r.post || ''}` : null;
+  if (!want) { if (S.editor) closeEditor(); return; }
+  if (S.editor?.key === want) return;
+  if (S.editor) closeEditor();
+  S.editor = { key: want, pending: true };
+  openEditor(r.id, r.post, want);
+}
+function closeEditor() {
+  const e = S.editor; S.editor = null; if (e?.layer) unmountLayer(e.layer);
+  clearTimeout(e?.tryTimer);
+}
+async function openEditor(id, presetPost, key) {
+  try {
+    if (!S.automations) await loadAutomations();
+  } catch { if (S.editor?.key === key) { S.editor = null; go('#/automations'); } return; }
+  if (S.editor?.key !== key) return;
+  const isNew = id === 'new';
+  const orig = isNew ? null : S.automations.find((a) => a.id === id);
+  if (!isNew && !orig) { S.editor = null; toast('That automation no longer exists.', 'error'); go('#/automations'); return; }
+  buildEditor(isNew, orig, presetPost, key);
+}
+function buildEditor(isNew, orig, presetPost, key) {
+  const ed = S.editor;
+  const d = {
+    name: orig?.name || '', enabled: orig ? orig.enabled : true, keyword: orig?.keyword || '', aliases: [...(orig?.aliases || [])],
+    match: orig?.match || 'fuzzy', dm: orig?.dm || '', link: orig?.link || '', ack: isNew ? DEFAULT_ACK : (orig?.ack || ''),
+    all_posts: !!orig?.all_posts, media_ids: [...(orig?.media_ids || [])],
+  };
+  if (isNew && presetPost) d.media_ids = [presetPost];
+  const norm = () => JSON.stringify([d.name.trim(), d.enabled, d.keyword.trim().toUpperCase(), d.aliases, d.match, d.dm.trim(), d.link.trim(), d.ack.trim(), d.all_posts, [...d.media_ids].sort()]);
+  const snap = norm();
+  const dirty = () => norm() !== snap;
+  const account = S.overview?.account;
+  let pvTab = 'dm';
+
+  /* trigger */
+  const name = h('input', { class: 'in', id: 'f-name', maxlength: '60', placeholder: 'e.g. Diwali code', autocomplete: 'off', value: d.name, 'aria-describedby': 'f-name-h' });
+  const kw = h('input', { class: 'in kw', id: 'f-kw', autocomplete: 'off', spellcheck: 'false', placeholder: 'DIWALI', value: d.keyword, 'aria-describedby': 'f-kw-e' });
+  const kwErr = h('p', { class: 'err', id: 'f-kw-e', hidden: true });
+  const tagsBox = h('div', { class: 'tags' }); const tagIn = h('input', { id: 'f-al', 'aria-label': 'Add alias', placeholder: 'Add alias', autocomplete: 'off', spellcheck: 'false' });
+  const drawTags = () => { tagsBox.replaceChildren(...d.aliases.map((t, i) => h('span', { class: 'tok' }, t, h('button', { type: 'button', 'aria-label': `Remove ${t}`, onclick: () => { d.aliases.splice(i, 1); drawTags(); sync(); tagIn.focus(); } }, ic('x', 12)))), tagIn); };
+  const commitTags = () => {
+    const parts = tagIn.value.split(/[,\s]+/).map((x) => x.replace(/[^\p{L}\p{N}_]/gu, '').toUpperCase()).filter(Boolean);
+    tagIn.value = ''; let ch = false;
+    for (const p of parts) if (!d.aliases.includes(p) && p !== d.keyword.trim().toUpperCase()) { d.aliases.push(p); ch = true; }
+    if (ch) { drawTags(); sync(); tagIn.focus(); }
+  };
+  tagIn.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ',' || e.key === ' ') { if (tagIn.value.trim()) { e.preventDefault(); commitTags(); } else if (e.key === 'Enter' && !(e.metaKey || e.ctrlKey)) e.preventDefault(); }
+    else if (e.key === 'Backspace' && !tagIn.value && d.aliases.length) { d.aliases.pop(); drawTags(); sync(); }
+  });
+  tagIn.addEventListener('blur', commitTags);
+  const matchHelp = h('p', { class: 'help' });
+  const setMatchHelp = () => { matchHelp.textContent = d.match === 'fuzzy' ? 'Catches typos like diwalli, stretched letters, accents.' : 'Only the whole word, in any capitalization. No typo tolerance.'; };
+  const seg = segmented('match', [['fuzzy', 'Fuzzy'], ['exact', 'Exact']], d.match, (v) => { d.match = v; setMatchHelp(); sync(); }, 'Match mode');
+  setMatchHelp();
+  const tryIn = h('input', { class: 'in try', id: 'f-try', placeholder: 'diwalli pls 🙏', autocomplete: 'off', 'aria-describedby': 'f-try-h' });
+  const tryOut = h('div', { class: 'tryr', role: 'status' });
+  let tseq = 0;
+  tryIn.addEventListener('input', () => {
+    clearTimeout(ed.tryTimer); const t = tryIn.value.trim(); tseq++;
+    if (!t) { tryOut.replaceChildren(); return; }
+    tryOut.replaceChildren(h('span', { class: 'sk', style: 'height:12px;width:120px' }));
+    const my = tseq;
+    ed.tryTimer = setTimeout(async () => {
+      try {
+        const r = await api('POST', '/api/try', { text: t }, { silent: true }); if (my !== tseq) return;
+        const m = r.match;
+        if (!m) tryOut.replaceChildren(h('span', { class: 'bad-c' }, ic('x', 15)), h('span', {}, 'No match.'));
+        else if (orig && m.automation_id === orig.id) tryOut.replaceChildren(h('span', { class: 'ok-c' }, ic('check', 15)), h('span', {}, 'Matches this automation ', h('span', { class: 'tok alias' }, m.keyword), ` (${m.mode}).`));
+        else tryOut.replaceChildren(h('span', { class: 'ok-c' }, ic('check', 15)), h('span', {}, 'Would trigger ', h('strong', {}, m.name), ' ', h('span', { class: 'tok alias' }, m.keyword), `, not this one.`));
+      } catch (e) { if (my === tseq && e.status !== 401) tryOut.replaceChildren(h('span', { class: 'mute' }, 'Couldn’t run that test.')); }
+    }, 300);
+  });
+  /* message */
+  const dm = h('textarea', { class: 'in', id: 'f-dm', rows: '4', placeholder: 'here’s the code. build your own.', value: d.dm, 'aria-describedby': 'f-dm-e' });
+  const dmErr = h('p', { class: 'err', id: 'f-dm-e', hidden: true }); const dmCount = h('span', { class: 'count' });
+  const link = h('input', { class: 'in', id: 'f-link', type: 'url', inputmode: 'url', autocomplete: 'off', spellcheck: 'false', placeholder: 'https://', value: d.link, 'aria-describedby': 'f-link-e' });
+  const linkErr = h('p', { class: 'err', id: 'f-link-e', hidden: true });
+  const ack = h('textarea', { class: 'in', id: 'f-ack', rows: '2', placeholder: 'sent! check your dms', value: d.ack, 'aria-describedby': 'f-ack-e' });
+  const ackErr = h('p', { class: 'err', id: 'f-ack-e', hidden: true }); const ackCount = h('span', { class: 'count' });
+  /* posts */
+  const pickHost = h('div', {}); const selCount = h('span', { class: 'mute num' });
+  const postsSeg = segmented('scope', [['all', 'All posts'], ['pick', 'Choose posts']], d.all_posts ? 'all' : 'pick', (v) => { d.all_posts = v === 'all'; drawPicker(); sync(); }, 'Which posts');
+  const drawPicker = () => {
+    if (d.all_posts) {
+      pickHost.replaceChildren(h('p', { class: 'help', style: 'margin-top:12px' }, 'Every post, including future ones, except those excluded in Settings. Only new comments fire.')); return;
+    }
+    if (!S.postsLoaded) {
+      pickHost.replaceChildren(h('div', { class: 'pick' }, Array.from({ length: 6 }, () => h('div', { class: 'sk', style: 'aspect-ratio:4/5' }))));
+      if (!S.postsLoading) loadPosts(false).then(() => { if (S.editor === ed && !d.all_posts) drawPicker(); }).catch(() => { pickHost.replaceChildren(h('div', { class: 'notice', style: 'margin-top:12px' }, 'Couldn’t load posts. ', h('button', { class: 'btn sm', type: 'button', onclick: drawPicker }, 'Retry'))); });
+      return;
+    }
+    pickHost.replaceChildren(h('div', { class: 'pick' }, S.posts.map(tile)),
+      S.postsNext ? h('div', { class: 'more', style: 'margin-top:16px' }, h('button', { class: 'btn sm', type: 'button', onclick: async (e) => { e.currentTarget.disabled = true; try { await loadPosts(true); } catch {} drawPicker(); } }, 'Load more')) : '');
+  };
+  const tile = (p) => {
+    const on = d.media_ids.includes(p.id); const url = safeUrl(p.permalink);
+    const t = h('div', { class: 'tile' + (on ? ' on' : '') });
+    const btn = h('button', { type: 'button', class: 'tile-btn', role: 'checkbox', 'aria-checked': String(on), 'aria-label': `${snip(p.caption, 50) || 'Post'}, ${plural(p.comments_count, 'comment', 'comments')}${p.trial ? ', trial reel' : ''}` }, thumbEl(p), h('span', { class: 'chk' }, ic('check', 13)));
+    btn.addEventListener('click', () => {
+      const i = d.media_ids.indexOf(p.id); if (i >= 0) d.media_ids.splice(i, 1); else d.media_ids.push(p.id);
+      const now = i < 0; t.classList.toggle('on', now); btn.setAttribute('aria-checked', String(now)); sync();
+    });
+    add(t, [h('div', { class: 'tw' }, btn, p.trial && h('span', { class: 'tag' }, 'Trial'), h('span', { class: 'cc' }, ic('comment', 10), compact(p.comments_count)),
+      url && h('a', { class: 'ext', href: url, target: '_blank', rel: 'noopener noreferrer', 'aria-label': 'Open on Instagram' }, ic('ext', 12))),
+      h('div', { class: 'cap', title: p.caption || '' }, p.caption || '(no caption)')]);
+    return t;
+  };
+  /* phone */
+  const phoneHost = h('div', {});
+  const drawPhone = () => {
+    const kwTxt = (d.keyword.trim() || 'keyword').toLowerCase();
+    const user = account?.username || 'you';
+    const pa = (cls = '') => account?.picture && safeImg(account.picture) ? h('img', { class: 'pa ' + cls, src: safeImg(account.picture), alt: '' }) : h('span', { class: 'pa ' + cls }, user[0].toUpperCase());
+    const url = safeUrl(d.link.trim());
+    let scr;
+    if (pvTab === 'dm') {
+      scr = [
+        h('div', { class: 'pt-top' }, ic('left', 20), h('span', { class: 'ring' }, pa()), h('div', { class: 'nm' }, user, h('small', {}, 'Instagram'))),
+        h('div', { class: 'thread' }, h('div', { class: 'tstamp' }, 'Today 9:41 AM'),
+          h('div', { class: 'mr' }, url ? h('span', { class: 'sp' }) : pa('s'), h('div', { class: 'mc' }, h('div', { class: 'bub' + (d.dm.trim() ? '' : ' ph-empty') + (url ? ' a' : '') }, d.dm.trim() || 'Your message shows up here.'))),
+          url && h('div', { class: 'mr' }, pa('s'), h('div', { class: 'mc' }, h('div', { class: 'lcard' }, h('div', {}, h('b', {}, new URL(url).hostname.replace(/^www\./, '')), h('small', {}, url.replace(/^https?:\/\/(www\.)?/, ''))), ic('ext', 16)))),
+          h('div', { class: 'dlv' }, 'Delivered')),
+        h('div', { class: 'cmp' }, 'Message…')];
+    } else {
+      scr = [
+        h('div', { class: 'pt-top', style: 'justify-content:center;font-weight:600' }, 'Comments'),
+        h('div', { class: 'thread', style: 'justify-content:flex-start;padding:6px 0' },
+          h('div', { class: 'cm' }, h('span', { class: 'pa s', style: 'background:#8a6f5c' }, 'M'), h('div', { class: 'b' }, h('div', {}, h('b', {}, 'mira.codes'), `${kwTxt} pls 🙏`), h('div', { class: 'm' }, '2m   Reply'))),
+          d.ack.trim() ? h('div', { class: 'cm re' }, pa('s'), h('div', { class: 'b' }, h('div', {}, h('b', {}, user), h('span', { class: 'au' }, 'Author')), h('div', {}, h('em', {}, '@mira.codes'), ' ' + d.ack.trim()), h('div', { class: 'm' }, 'Just now   Reply')))
+            : h('div', { class: 'cm re none' }, 'No public reply. Only the DM goes out.')),
+        h('div', { class: 'cmp' }, 'Add a comment…')];
+    }
+    phoneHost.replaceChildren(h('div', { class: 'phone', 'aria-label': 'Preview of what the commenter sees' }, h('div', { class: 'scr' }, h('div', { class: 'bar' }, h('i')), ...scr)));
+  };
+  const pvSeg = segmented('pv', [['dm', 'Direct message'], ['reply', 'Public reply']], 'dm', (v) => { pvTab = v; drawPhone(); }, 'Preview', 'sm');
+  const det = h('details', { class: 'pvd' }, h('summary', {}, 'Preview ', h('span', { class: 'mute' }, 'what they’ll see')), h('div', { class: 'pvb' }, pvSeg, phoneHost));
+  det.open = matchMedia('(min-width: 1200px)').matches;
+
+  /* footer + header */
+  const errBox = h('p', { class: 'err', role: 'alert', hidden: true });
+  const saveBtn = h('button', { class: 'btn primary nm', type: 'button' }, isNew ? 'Create' : 'Save');
+  const saveTop = h('button', { class: 'btn ghost m', type: 'button', style: 'font-weight:600;color:var(--accent)' }, isNew ? 'Create' : 'Save');
+  const cancelTop = h('button', { class: 'btn ghost m', type: 'button', onclick: () => requestClose() }, 'Cancel');
+  const setEn = (on) => { d.enabled = on; enSw.setAttribute('aria-checked', String(on)); sw2.setAttribute('aria-checked', String(on)); enLbl.textContent = on ? 'Live' : 'Paused'; sync(); };
+  const enSw = sw(d.enabled, 'Enabled', setEn);
+  const sw2 = sw(d.enabled, 'Enabled', setEn);
+  const enLbl = h('span', {}, d.enabled ? 'Live' : 'Paused');
+  const delBtn = !isNew && h('button', { class: 'btn danger', type: 'button', onclick: async () => {
+    if (!await confirmDialog({ title: `Delete “${orig.name}”?`, body: 'Comments with this keyword stop triggering it. DMs already sent stay sent.', ok: 'Delete', danger: true })) return;
+    try {
+      await api('DELETE', `/api/automations/${encodeURIComponent(orig.id)}`);
+      S.automations = S.automations.filter((a) => a.id !== orig.id); delete S.wd[orig.id]; invalidatePosts(); ed.clean = true;
+      toast(`Deleted ${orig.name}.`, 'ok'); loadOverview().catch(() => {}); go('#/automations'); S.ui.renderList?.();
+    } catch {}
+  } }, 'Delete');
+
+  const requestClose = async () => {
+    if (ed.busy) return;
+    if (dirty() && !ed.clean && !await confirmDialog({ title: 'Discard changes?', body: 'You have unsaved edits to this automation.', ok: 'Discard', danger: true })) return;
+    ed.clean = true; go('#/automations');
+  };
+  const tid = nid('t');
+  const body = h('div', { class: 'db' },
+    h('form', { class: 'df', novalidate: true, onsubmit: (e) => e.preventDefault() },
+      h('div', { class: 'enrow' }, h('span', {}, 'Live'), sw2),
+      h('section', {},
+        h('div', { class: 'sh' }, h('h3', {}, 'Trigger')),
+        h('div', { class: 'field' }, h('label', { for: 'f-name' }, 'Name', h('span', { class: 'mute', id: 'f-name-h' }, 'Only you see this')), name),
+        h('div', { class: 'field' }, h('label', { for: 'f-kw' }, 'Keyword'), kw, kwErr, h('p', { class: 'help' }, 'Case doesn’t matter. It has to stand alone, so “misguided” won’t trigger GUIDE.')),
+        h('div', { class: 'field' }, h('label', { for: 'f-al' }, 'Aliases', h('span', { class: 'mute' }, 'Enter or comma to add')), tagsBox),
+        h('div', { class: 'field' }, h('div', { class: 'lbl', id: 'f-m' }, 'Match'), seg, matchHelp),
+        h('div', { class: 'field', style: 'margin-bottom:0' }, h('label', { for: 'f-try' }, 'Try a comment'), tryIn, tryOut,
+          h('p', { class: 'help', id: 'f-try-h' }, isNew ? 'This one isn’t saved yet, so tests run against your existing automations. Save it to test its own keyword.' : 'Tests run against the saved version of your automations.'))),
+      h('section', {},
+        h('div', { class: 'sh' }, h('h3', {}, 'Message')),
+        h('div', { class: 'field' }, h('label', { for: 'f-dm' }, 'Direct message', dmCount), dm, dmErr),
+        h('div', { class: 'field' }, h('label', { for: 'f-link' }, 'Link', h('span', { class: 'mute' }, 'Optional')), link, linkErr),
+        h('div', { class: 'field', style: 'margin-bottom:0' }, h('label', { for: 'f-ack' }, 'Public reply', ackCount), ack, ackErr,
+          h('p', { class: 'help' }, 'Posted under their comment after the DM goes out. Leave it empty to stay quiet.'))),
+      h('section', {},
+        h('div', { class: 'sh' }, h('h3', {}, 'Posts'), selCount),
+        postsSeg, pickHost)),
+    h('aside', { class: 'dp' }, det));
+  const wrap = h('div', { class: 'layer' }, h('div', { class: 'drawer', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': tid },
+    h('div', { class: 'dh' }, cancelTop, h('h2', { id: tid }, isNew ? 'New automation' : (orig.name || orig.keyword)), h('span', { class: 'sp' }),
+      h('label', {}, enLbl, enSw), h('button', { class: 'btn ghost icon xclose', type: 'button', 'aria-label': 'Close editor', title: 'Close (Esc)', onclick: requestClose }, ic('x', 18)), saveTop),
+    body, h('div', { class: 'dfoot' + (isNew ? ' solo' : '') }, delBtn, h('span', { class: 'sp' }), errBox, h('button', { class: 'btn nm', type: 'button', onclick: requestClose }, 'Cancel'), saveBtn)));
+
+  /* sync: pull values, refresh counters + preview */
+  const full_dm = () => d.dm.trim() + (d.link.trim() ? '\n' + d.link.trim() : '');
+  function sync() {
+    const n = full_dm().length; dmCount.textContent = `${n} / 1000`; dmCount.classList.toggle('over', n > 1000);
+    ackCount.textContent = `${d.ack.length} / 300`; ackCount.classList.toggle('over', d.ack.length > 300);
+    selCount.textContent = d.all_posts ? '' : `${d.media_ids.length} selected`;
+    drawPhone();
+  }
+  const bind = (el, k, after) => el.addEventListener('input', () => { d[k] = el.value; after?.(); sync(); });
+  bind(name, 'name'); bind(dm, 'dm', () => { dmErr.hidden = true; }); bind(ack, 'ack', () => { ackErr.hidden = true; }); bind(link, 'link', () => { linkErr.hidden = true; });
+  kw.addEventListener('input', () => { d.keyword = kw.value; kwErr.hidden = true; sync(); });
+  const fieldErr = (msg) => {
+    const m = msg.toLowerCase(); const t = /link/.test(m) ? [linkErr, link] : /keyword|alias|already used|overlap/.test(m) ? [kwErr, kw] : /public reply|ack/.test(m) ? [ackErr, ack] : /dm|message|1000/.test(m) ? [dmErr, dm] : null;
+    if (t) { t[0].textContent = msg; t[0].hidden = false; t[1].focus(); } else { errBox.textContent = msg; errBox.hidden = false; }
+  };
+  async function save() {
+    if (ed.busy) return;
+    [kwErr, dmErr, linkErr, ackErr, errBox].forEach((e) => { e.hidden = true; });
+    commitTags();
+    const keyword = d.keyword.trim().toUpperCase();
+    if (!keyword) return fieldErr('Keyword is required.');
+    if (!d.dm.trim()) return fieldErr('Write the message people should get.');
+    if (d.link.trim() && !safeUrl(d.link.trim())) return fieldErr('Link must start with http:// or https://');
+    if (full_dm().length > 1000) return fieldErr('The DM, including the link, can be at most 1000 characters.');
+    if (d.ack.length > 300) return fieldErr('Public reply can be at most 300 characters.');
+    const payload = { name: d.name.trim() || keyword[0] + keyword.slice(1).toLowerCase(), enabled: d.enabled, keyword, aliases: d.aliases, match: d.match, dm: d.dm.trim(), link: d.link.trim(), ack: d.ack.trim(), all_posts: d.all_posts, media_ids: d.all_posts ? (orig?.media_ids || []) : d.media_ids };
+    ed.busy = true; saveBtn.disabled = saveTop.disabled = true;
+    try {
+      const r = isNew ? await api('POST', '/api/automations', payload, { silent: true }) : await api('PUT', `/api/automations/${encodeURIComponent(orig.id)}`, payload, { silent: true });
+      const a = r.automation;
+      if (isNew) S.automations.push(a); else S.automations = S.automations.map((x) => (x.id === a.id ? a : x));
+      invalidatePosts(); delete S.wd[a.id]; ed.clean = true; ed.busy = false;
+      const postsChanged = isNew || !!orig.all_posts !== a.all_posts || orig.enabled !== a.enabled || JSON.stringify([...orig.media_ids].sort()) !== JSON.stringify([...a.media_ids].sort());
+      go('#/automations'); S.ui.renderList?.(); toast(isNew ? `Created ${a.name}.` : `Saved ${a.name}.`, 'ok');
+      loadOverview().catch(() => {});
+      if (a.enabled) {
+        const w = await api('GET', `/api/automations/${encodeURIComponent(a.id)}/waiting`, undefined, { silent: true }).then((x) => x.comments).catch(() => []);
+        S.wd[a.id] = w; updatePills(a.id);
+        if (postsChanged && w.length) openWaiting(a, w);
+      }
+    } catch (e) {
+      ed.busy = false; saveBtn.disabled = saveTop.disabled = false;
+      if (e.status !== 401) fieldErr(e.message);
+    }
+  }
+  saveBtn.addEventListener('click', save); saveTop.addEventListener('click', save);
+  const L = mountLayer(wrap, { close: requestClose, onSave: save, focus: isNew ? kw : name });
+  ed.layer = L;
+  drawTags(); sync(); drawPicker();
+}
+
+/* ---------- boot ---------- */
+async function boot() {
+  root.replaceChildren(h('div', { class: 'boot' }, h('div', { class: 'sk', style: 'height:20px;width:160px;margin-bottom:24px' }), ...skRows(2, 72)));
+  try {
+    const o = await api('GET', '/api/overview', undefined, { silent: true });
+    S.authed = true; S.overview = o; S.shell = null; S.tab = null; route();
+  } catch (e) {
+    if (e.status === 401) return renderLogin();
+    root.replaceChildren(h('div', { class: 'boot' }, wordmark(), retryBlock(boot)));
+  }
+}
+window.addEventListener('hashchange', route);
+boot();
+</script>
+</body>
+</html>

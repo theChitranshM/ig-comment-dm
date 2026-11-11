@@ -1,6 +1,7 @@
 // /admin/* — owner-only operations, guarded by `Authorization: Bearer <ADMIN_KEY>`.
 // Driven by `npm run admin -- <command>` (scripts/admin.mjs); every route is also plain curl-able.
 import { graph, getConfig, ledger, poll, sweepPending, refreshToken, ingest, extractComments, _resetCaches } from "./core.js";
+import { normalizeConfig, validateAutomation } from "./automations.js";
 
 const json = (data, status = 200) => Response.json(data, { status });
 
@@ -54,7 +55,10 @@ async function check(env, origin) {
     };
   }
   const cfg = await getConfig(env);
-  out.config = { rules: cfg.rules.map((r) => r.keyword), mode: cfg.scope?.mode, posts: (cfg.scope?.media_ids ?? []).length, dry_run: Boolean(cfg.dry_run) };
+  out.config = {
+    automations: cfg.automations.map((a) => ({ name: a.name, keyword: a.keyword, enabled: a.enabled, posts: a.all_posts ? "all" : a.media_ids.length })),
+    dry_run: cfg.dry_run,
+  };
   return out;
 }
 
@@ -123,9 +127,13 @@ export async function admin(request, env, url) {
     case "GET /admin/config":
       return json(await getConfig(env));
     case "PUT /admin/config": {
-      const cfg = await request.json();
-      if (!Array.isArray(cfg.rules) || !cfg.scope) return json({ error: "config needs rules[] and scope" }, 400);
-      for (const r of cfg.rules) if (!r.keyword || !r.dm) return json({ error: `every rule needs keyword and dm (bad: ${JSON.stringify(r)})` }, 400);
+      const raw = await request.json().catch(() => null);
+      if (!raw || (!Array.isArray(raw.automations) && !Array.isArray(raw.rules))) return json({ error: "config needs an automations[] list" }, 400);
+      const cfg = normalizeConfig(raw);
+      for (const a of cfg.automations) {
+        const err = validateAutomation(a, cfg.automations.filter((o) => o.id !== a.id));
+        if (err) return json({ error: `${a.name}: ${err}` }, 400);
+      }
       await env.KV.put("config", JSON.stringify(cfg));
       _resetCaches();
       return json({ ok: true });

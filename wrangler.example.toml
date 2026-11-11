@@ -4,6 +4,12 @@ name = "ig-comment-dm"
 main = "src/index.js"
 compatibility_date = "2025-09-01"
 
+# The dashboard (src/app/app.html) is bundled as a text module.
+[[rules]]
+type = "Text"
+globs = ["**/*.html"]
+fallthrough = true
+
 # Workers KV: live config (rules, scope) + the access token from the connect flow.
 [[kv_namespaces]]
 binding = "KV"

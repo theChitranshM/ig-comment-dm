@@ -6,9 +6,9 @@ This takes about 30 minutes the first time, and most of it is clicking through M
 - Part A: Meta app
 - Part B: `npm run setup`
 - Part C: paste values into Meta
-- Part D: connect your account
+- Part D: connect your account and open the dashboard
 - Part E: go Live
-- Part F: switch on your first post
+- Part F: create your first automation
 
 ---
 
@@ -85,7 +85,7 @@ On **App settings → Basic**, also set a **category** and click **Save changes*
 
 ---
 
-## Part D: Connect your Instagram account
+## Part D: Connect your account and open the dashboard
 
 ```bash
 npm run admin -- connect
@@ -116,9 +116,15 @@ Webhooks
   ✓ Your account subscribed to the app
 
 Config
-  Keywords: GUIDE · mode: allowlist · posts allowed: 0
-! No posts allowed yet, so nothing will fire. Add one: npm run admin -- allow 1
+  ● Free guide (GUIDE) · 0 post(s)
+! No automation is running on any post yet. Open the dashboard (/app) or: npm run admin -- allow 1
 ```
+
+### Open the dashboard
+
+Go to `https://<worker>/app`. Opening the bare Worker URL (`/`) redirects there. `npm run setup` printed the exact address.
+
+Sign in with the **admin key**: the `ADMIN_KEY` line in `.secrets.local` in your project folder. The dashboard keeps you signed in for 30 days with a secure cookie. The top bar shows a health indicator; once the checks above pass it turns green. If it shows a banner instead, see [Troubleshooting](TROUBLESHOOTING.md#the-dashboard-shows-a-health-banner).
 
 > **Why not read the ID automatically?** Meta's `/me/assigned_instagram_accounts` often comes back **empty** for this kind of token, even when it can act on your account. Reading the ID from Business Settings is the reliable way.
 
@@ -137,32 +143,47 @@ You don't need **"Become a Tech Provider"** or App Review. Those are for apps th
 
 ---
 
-## Part F: Switch on your first post
+## Part F: Create your first automation
 
-```bash
-npm run admin -- posts          # numbered list, newest first. 'trial?' = reel not shared to feed
-npm run admin -- allow 1        # switch on post 1: new comments fire from now on
-npm run admin -- preview        # older comments waiting on it? (sends nothing)
-npm run admin -- backfill       # answer them, after you confirm
-```
+An automation is a keyword, the message it sends, and the posts it runs on.
 
-**Test it properly.** Comment your keyword from a **second account** (not one with a role on the app) and watch:
+1. In the dashboard, open **Automations → New automation**.
+2. Enter the **keyword** people will comment (for example `GUIDE`). Add aliases for plurals or nicknames if you like.
+3. Write the **DM**, add an optional **link**, and an optional **public reply**. The preview shows what people will see.
+4. Under **Posts**, pick the posts it should run on, or choose all posts. Trial reels are marked in the picker.
+5. Type a sample comment into **Try a comment** to check the match, then save.
+
+Only comments posted **after** you add a post fire automatically. Older comments on that post appear as "N people waiting". Open them to review the list and send, or leave them alone.
+
+**Test it properly.** Comment your keyword from a **second account** (not one with a role on the app). Open **Activity** in the dashboard, or watch the logs:
 
 ```bash
 npm run admin -- logs
 ```
 
-You should see `webhook`, then `dm_sent`, then `ack_sent` within a few seconds. Comments from your own account never fire; that's the self filter working. To check a spelling without commenting, use `npm run admin -- try "guidee pls"`.
+You should see `webhook`, then `dm_sent`, then `ack_sent` within a few seconds. Comments from your own account never fire; that's the self filter working.
 
-**Running another comment-to-DM tool at the same time?** Don't switch on a post that the other tool also handles. Instagram allows one private reply per comment, so whichever tool replies first wins and the other errors. `preview` and `backfill` also skip comments you've already replied to publicly, so a backfill won't double-message anyone the other tool already handled.
+**Want to see before it sends?** Turn on **preview mode** in Settings. Comments are matched and logged, but no DMs or replies go out. Turn it off when you're happy.
 
-When you're confident, go wide:
+**Running another comment-to-DM tool at the same time?** Don't add a post that the other tool also handles. Instagram allows one private reply per comment, so whichever tool replies first wins and the other errors. The waiting list skips comments you've already replied to publicly, so a backfill won't double-message anyone the other tool already handled.
+
+When you're confident, choose **all posts** on the automation. To leave particular posts alone, add their ids to `exclude_media_ids` with `config pull` and `config push` (Settings shows the list, read-only).
+
+<details>
+<summary>CLI alternative</summary>
 
 ```bash
-npm run admin -- config pull
-# set "mode": "all", list posts to leave alone in "exclude_media_ids"
-npm run admin -- config push
+npm run admin -- posts                    # numbered list, newest first. 'trial?' = reel not shared to feed
+npm run admin -- allow 1 --to GUIDE       # add post 1 to the GUIDE automation (new comments only)
+npm run admin -- preview                  # older comments waiting? (sends nothing)
+npm run admin -- backfill                 # answer them, after you confirm
 ```
+
+`--to` is required when you have more than one automation. Create or edit automations with `npm run admin -- config pull`, edit `config.local.json`, then `config push`. The format is in the [README](../README.md#create-an-automation).
+
+</details>
+
+---
 
 ## Updating
 

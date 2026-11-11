@@ -1,6 +1,20 @@
 // Worker entry: webhook, OAuth callback, public pages, admin API, and cron.
 import { handshake, verifySignature, extractComments, ingest, poll, sweepPending, refreshToken, graph, ledger, log, newBudget, _resetCaches } from "./core.js";
 import { admin } from "./admin.js";
+import { api } from "./api.js";
+import APP_HTML from "./app/app.html";
+
+const APP_HEADERS = {
+  "content-type": "text/html; charset=utf-8",
+  "cache-control": "no-store",
+  "content-security-policy":
+    "default-src 'none'; img-src https: data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; " +
+    "connect-src 'self'; base-uri 'none'; " +
+    "form-action 'self'; frame-ancestors 'none'",
+  "referrer-policy": "no-referrer",
+  "x-content-type-options": "nosniff",
+  "x-frame-options": "DENY",
+};
 import { page, esc, privacyPage, dataDeletionPage } from "./pages.js";
 export { Ledger } from "./ledger.js";
 
@@ -43,6 +57,16 @@ async function authCallback(env, url) {
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
+    if (url.pathname === "/") return Response.redirect(`${url.origin}/app`, 302);
+    if (url.pathname === "/app" || url.pathname === "/app/") return new Response(APP_HTML, { headers: APP_HEADERS });
+    if (url.pathname.startsWith("/api/")) {
+      try {
+        return await api(request, env, url);
+      } catch (e) {
+        log("api_error", { path: url.pathname, error: String(e?.message ?? e) });
+        return Response.json({ error: String(e?.message ?? e) }, { status: 500, headers: { "cache-control": "no-store" } });
+      }
+    }
     if (url.pathname.startsWith("/admin/")) {
       try {
         return await admin(request, env, url);
@@ -53,7 +77,7 @@ export default {
     if (url.pathname === "/auth/callback") return authCallback(env, url);
     if (url.pathname === "/privacy") return privacyPage(env);
     if (url.pathname === "/data-deletion") return dataDeletionPage(env);
-    if (url.pathname !== "/webhook") return new Response("ok");
+    if (url.pathname !== "/webhook") return new Response("Not found", { status: 404 });
 
     if (request.method === "GET") return handshake(url, env.VERIFY_TOKEN);
     if (request.method !== "POST") return new Response("method not allowed", { status: 405 });

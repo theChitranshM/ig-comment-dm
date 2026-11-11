@@ -119,5 +119,6 @@ console.log(`  1. Paste the values above into Meta and click ${bold("Verify and 
 console.log(`  2. ${bold("npm run admin -- connect")}   ${dim("log in with Instagram and pick your account")}`);
 console.log(`  3. ${bold("npm run admin -- set-ig-id <id>")}   ${dim("your Instagram account ID (Business Settings → Instagram accounts)")}`);
 console.log(`  4. ${bold("npm run admin -- subscribe")} then ${bold("npm run admin -- check")}`);
+console.log(`  5. Open your dashboard: ${cyan(`${W}/app`)}  ${dim("log in with ADMIN_KEY from .secrets.local")}`);
 console.log(dim("\n  Full walkthrough: docs/SETUP.md\n"));
 closePrompts();

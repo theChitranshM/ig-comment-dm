@@ -6,8 +6,9 @@
 //
 // Record: { item, stage: new|dm_sent|done|done_noack|failed, attempts, leaseUntil, created, updated, note }
 
-const OPS = new Set(["enqueue", "begin", "advance", "release", "pending", "get", "status", "prune"]);
-const TERMINAL =new Set(["done", "done_noack", "failed"]);
+const OPS = new Set(["enqueue", "begin", "advance", "release", "pending", "get", "status", "prune", "stats", "activity", "lookup"]);
+const SENT = new Set(["dm_sent", "done", "done_noack"]);
+const TERMINAL = new Set(["done", "done_noack", "failed"]);
 const LEASE_MS = 120_000;
 const MAX_ATTEMPTS = 5;
 const KEEP_MS = 30 * 86_400_000;
@@ -55,6 +56,7 @@ export class Ledger {
     if (!rec) return { ok: false };
     rec.stage = stage;
     rec.updated = now;
+    if (stage === "dm_sent" || ((stage === "done" || stage === "done_noack") && !rec.sentAt)) rec.sentAt = now;
     if (note) rec.note = note;
     if (TERMINAL.has(stage)) rec.leaseUntil = 0;
     await this.storage.put(k, rec);
@@ -81,7 +83,17 @@ export class Ledger {
     return { ids };
   }
 
-  async get({ id }) {
+  // Which of these comment ids do we already know, and at what stage?
+  async lookup({ ids = [] }) {
+    const stages = {};
+    for (const id of ids.slice(0, 500)) {
+      const rec = await this.storage.get(this.key(id));
+      if (rec) stages[id] = rec.stage;
+    }
+    return { stages };
+  }
+
+    async get({ id }) {
     return (await this.storage.get(this.key(id))) ?? null;
   }
 
@@ -93,6 +105,37 @@ export class Ledger {
       if (now - rec.updated < 86_400_000) recent.push({ id: rec.item.commentId, user: rec.item.fromUsername, kw: rec.item.keyword, src: rec.item.source, stage: rec.stage, attempts: rec.attempts, note: rec.note });
     }
     return { counts, recent };
+  }
+
+  // Per-automation counters for the dashboard. Old records without automationId are keyed by keyword.
+  async stats({ now }) {
+    const by = {};
+    const totals = { sent: 0, sent_24h: 0, failed: 0, pending: 0 };
+    for (const [, rec] of await this.storage.list({ prefix: "c:" })) {
+      const key = rec.item.automationId ?? `kw:${rec.item.keyword}`;
+      const b = (by[key] ??= { sent: 0, failed: 0, pending: 0, last_sent_at: null });
+      if (SENT.has(rec.stage)) {
+        b.sent++; totals.sent++;
+        const at = rec.sentAt ?? rec.updated;
+        if (now - at < 86_400_000) totals.sent_24h++;
+        if (!b.last_sent_at || at > b.last_sent_at) b.last_sent_at = at;
+      } else if (rec.stage === "failed") { b.failed++; totals.failed++; }
+      else { b.pending++; totals.pending++; }
+    }
+    return { by, totals };
+  }
+
+  async activity({ limit = 50 }) {
+    const rows = [];
+    for (const [, rec] of await this.storage.list({ prefix: "c:" })) rows.push(rec);
+    rows.sort((a, b) => b.updated - a.updated);
+    return {
+      items: rows.slice(0, Math.min(Number(limit) || 50, 200)).map((r) => ({
+        comment_id: r.item.commentId, automation_id: r.item.automationId ?? null, automation_name: r.item.automationName ?? null,
+        keyword: r.item.keyword, user: r.item.fromUsername, text: r.item.text, media_id: r.item.mediaId, source: r.item.source,
+        stage: r.stage, attempts: r.attempts, note: r.note ?? null, updated_at: new Date(r.updated).toISOString(),
+      })),
+    };
   }
 
   async prune({ now }) {
