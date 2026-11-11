@@ -1,0 +1,43 @@
+# Copied to wrangler.toml by `npm run setup`. wrangler.toml is git-ignored — your ids stay local.
+name = "ig-comment-dm"
+# account_id = ""   # only if your Cloudflare login can see several accounts (npx wrangler whoami)
+main = "src/index.js"
+compatibility_date = "2025-09-01"
+
+# Workers KV: live config (rules, scope) + the access token from the connect flow.
+[[kv_namespaces]]
+binding = "KV"
+id = "<KV_NAMESPACE_ID>"
+
+# Durable Object ledger: atomic per-comment dedupe + retry queue (SQLite DOs are on the free plan).
+[[durable_objects.bindings]]
+name = "LEDGER"
+class_name = "Ledger"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Ledger"]
+
+# Every 5 min: retry queue + light poll of your posts. Daily: full 7-day backfill + token check + prune.
+[triggers]
+crons = ["*/5 * * * *", "17 10 * * *"]
+
+[vars]
+APP_NAME = "ig-comment-dm"
+OWNER_NAME = "<YOUR_NAME>"                 # shown on the privacy page
+IG_USERNAME = "<your_instagram_username>"  # without @ — also used to ignore your own comments
+IG_ID = ""                                 # set by: npm run admin -- set-ig-id <id>
+APP_ID = "<META_APP_ID>"                   # Meta app dashboard → App settings → Basic
+LOGIN_CONFIG_ID = "<LOGIN_CONFIG_ID>"      # Use cases → Customize → API setup with Unified login → Configuration ID
+GRAPH_HOST = "graph.facebook.com"          # Unified login (Facebook Login for Business)
+TOKEN_KIND = "system_user"                 # never expires · "ig_login" = legacy 60-day refresh route
+API_VERSION = "v27.0"
+DAILY_CRON = "17 10 * * *"
+POLL_RECENT_MEDIA = "4"                    # posts polled every 5 min when scope.mode = "all"
+FULL_SWEEP_MEDIA = "8"                     # posts swept daily when scope.mode = "all"
+MAX_SENDS_PER_RUN = "5"                    # free-plan Workers allow ~50 outbound calls per run; extra sends wait 5 min
+
+# Secrets — never in this file (set by `npm run setup`, or `npx wrangler secret put <NAME>`):
+#   APP_SECRET    Meta app secret (App settings → Basic). Signs webhooks + token exchange.
+#   VERIFY_TOKEN  random string you also paste into Meta's webhook settings
+#   ADMIN_KEY     random string that guards /admin/* (used by npm run admin)

@@ -1,0 +1,19 @@
+{
+  "name": "ig-comment-dm",
+  "version": "1.0.0",
+  "description": "Comment a keyword, get the link in your DMs. A self-hosted Instagram comment-to-DM tool on a free Cloudflare Worker.",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "engines": { "node": ">=22" },
+  "repository": { "type": "git", "url": "git+https://github.com/theChitranshM/ig-comment-dm.git" },
+  "homepage": "https://github.com/theChitranshM/ig-comment-dm#readme",
+  "bugs": "https://github.com/theChitranshM/ig-comment-dm/issues",
+  "scripts": {
+    "setup": "node scripts/setup.mjs",
+    "admin": "node scripts/admin.mjs",
+    "deploy": "npx --yes wrangler@4.160.0 deploy",
+    "logs": "npx --yes wrangler@4.160.0 tail --format pretty",
+    "test": "node --test test/worker.test.js"
+  }
+}

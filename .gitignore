@@ -1,0 +1,10 @@
+node_modules/
+.dev.vars
+.wrangler/
+
+# your deployment — ids, secrets, live config
+wrangler.toml
+.secrets.local
+*.local.json
+
+.DS_Store
