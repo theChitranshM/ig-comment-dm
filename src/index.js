@@ -12,13 +12,25 @@ const APP_HEADERS = {
   "content-security-policy":
     "default-src 'none'; img-src https: data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; " +
     "connect-src 'self'; base-uri 'none'; " +
-    "form-action 'self'; frame-ancestors 'none'",
+    "form-action 'self'; manifest-src 'self'; frame-ancestors 'none'",
   "referrer-policy": "no-referrer",
   "x-content-type-options": "nosniff",
   "x-frame-options": "DENY",
 };
 import { page, esc, privacyPage, dataDeletionPage } from "./pages.js";
 export { Ledger } from "./ledger.js";
+import { ICONS } from "./app/icons.js";
+
+// Home-screen install: open full screen from an app icon on iOS and Android.
+const MANIFEST = JSON.stringify({
+  name: "ig-comment-dm", short_name: "Comment DM", start_url: "/app", scope: "/app", display: "standalone",
+  background_color: "#F7F7F8", theme_color: "#FFFFFF",
+  icons: [
+    { src: "/app/icons/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any maskable" },
+    { src: "/app/icons/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any maskable" },
+  ],
+});
+const b64bytes = (b) => Uint8Array.from(atob(b), (c) => c.charCodeAt(0));
 
 async function authCallback(env, url) {
   const state = url.searchParams.get("state");
@@ -84,6 +96,12 @@ export default {
     if (url.pathname === "/app" || url.pathname === "/app/") {
       ctx.waitUntil(rememberOrigin(env, url.origin));
       return new Response(APP_HTML, { headers: APP_HEADERS });
+    }
+    if (url.pathname === "/app/manifest.webmanifest")
+      return new Response(MANIFEST, { headers: { "content-type": "application/manifest+json", "cache-control": "public, max-age=86400" } });
+    if (url.pathname.startsWith("/app/icons/")) {
+      const b = ICONS[url.pathname.slice("/app/icons/".length)];
+      return b ? new Response(b64bytes(b), { headers: { "content-type": "image/png", "cache-control": "public, max-age=604800" } }) : new Response("Not found", { status: 404 });
     }
     if (url.pathname.startsWith("/api/")) {
       try {

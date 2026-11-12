@@ -4,7 +4,7 @@ import { api } from "../src/api.js";
 import { ingest, poll, sweepPending, extractComments, getConfig, ledger } from "../src/core.js";
 import { normalizeConfig, normalizeAutomation, applyEdit, validateAutomation } from "../src/automations.js";
 import {
-  IG_ID, makeEnv, putConfig, installGraph, commentValue, changesPayload, _resetCaches, isoAgo, H, D,
+  IG_ID, makeEnv, makeCtx, putConfig, installGraph, commentValue, changesPayload, _resetCaches, isoAgo, H, D,
 } from "./helpers.js";
 
 const realLog = console.log;
@@ -1271,5 +1271,26 @@ describe("contract spot checks (docs/API.md)", () => {
   test("PUT /api/settings returns documented settings (dry_run, exclude_media_ids)", async () => {
     const r = await req("PUT", "/api/settings", { body: { dry_run: true } });
     assert.deepEqual(Object.keys(r.json.settings).sort(), ["dry_run", "exclude_media_ids"]);
+  });
+});
+
+describe("home-screen install", () => {
+  test("manifest, icons and head tags are served", async () => {
+    const worker = (await import("../src/index.js")).default;
+    const env = makeEnv(); const ctx = makeCtx();
+    const m = await worker.fetch(new Request("https://x/app/manifest.webmanifest"), env, ctx);
+    assert.equal(m.headers.get("content-type"), "application/manifest+json");
+    const man = await m.json();
+    assert.equal(man.start_url, "/app"); assert.equal(man.display, "standalone");
+    for (const p of ["/app/icons/apple-touch-icon.png", "/app/icons/icon-192.png", "/app/icons/icon-512.png"]) {
+      const r = await worker.fetch(new Request("https://x" + p), env, ctx);
+      assert.equal(r.status, 200); assert.equal(r.headers.get("content-type"), "image/png");
+      const b = new Uint8Array(await r.arrayBuffer()); assert.deepEqual([...b.slice(1, 4)], [80, 78, 71]); // "PNG"
+    }
+    assert.equal((await worker.fetch(new Request("https://x/app/icons/nope.png"), env, ctx)).status, 404);
+    const html = await (await worker.fetch(new Request("https://x/app"), env, ctx)).text();
+    assert.match(html, /rel="manifest"/); assert.match(html, /apple-touch-icon/);
+    const csp = (await worker.fetch(new Request("https://x/app"), env, ctx)).headers.get("content-security-policy");
+    assert.match(csp, /manifest-src 'self'/);
   });
 });
