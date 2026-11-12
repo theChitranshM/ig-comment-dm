@@ -32,7 +32,7 @@ export function extractPostbacks(payload, igId) {
     for (const m of entry?.messaging ?? []) {
       const p = m?.postback?.payload ?? m?.message?.quick_reply?.payload;
       const senderId = m?.sender?.id && String(m.sender.id);
-      if (typeof p !== "string" || !p.startsWith(PREFIX) || !senderId || senderId === String(igId) || m?.message?.is_echo) continue;
+      if (typeof p !== "string" || !p.startsWith(PREFIX) || !/^\d{1,32}$/.test(senderId ?? "") || senderId === String(igId) || m?.message?.is_echo) continue;
       out.push({ mid: String(m.postback?.mid ?? m.message?.mid ?? `${senderId}:${m.timestamp}`), senderId, payload: p });
     }
   }
@@ -43,8 +43,14 @@ const send = (env, igsid, message) => graph(env, "POST", `${env.IG_ID}/messages`
 
 export async function handlePostback(env, { mid, senderId, payload }) {
   const [id, step] = payload.slice(PREFIX.length).split(":");
-  const { first } = await ledger(env)("once", { key: `pb:${mid}` }); // Meta retries webhooks; act once per tap
+  const call = ledger(env);
+  const { first } = await call("once", { key: `pb:${mid}` }); // Meta retries webhooks; act once per tap
   if (!first) return { result: "dedupe" };
+  // A person hammering the button can't make us spam Instagram: 6 taps a minute each.
+  if (!(await call("hit", { key: `tap:${senderId}`, limit: 6, windowMs: 60_000 })).ok) {
+    log("tap_throttled", { automation: id });
+    return { result: "throttled" };
+  }
   const config = await getConfig(env);
   const rule = config.automations.find((a) => a.id === id);
   if (!rule || rule.enabled === false) return { result: "inactive" };

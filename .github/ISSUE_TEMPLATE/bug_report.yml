@@ -1,0 +1,35 @@
+name: Bug report
+description: Something is not working as documented
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before you post, remove account ids, usernames, tokens and links to your Worker. For security issues, use the Security tab instead of an issue.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: textarea
+    id: check
+    attributes:
+      label: Output of `npm run admin -- check`
+      description: Redact ids and usernames.
+      render: text
+  - type: input
+    id: node
+    attributes:
+      label: Node version
+      description: Output of `node -v`
+  - type: input
+    id: os
+    attributes:
+      label: Operating system

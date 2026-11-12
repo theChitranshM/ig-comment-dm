@@ -13,6 +13,7 @@ The dashboard at `/app` is a single page served by the Worker. It talks to `/api
 - Failure: a non-2xx status with `{ "error": "human readable message" }`.
 - `401` means "not logged in". Show the login screen.
 - `403` means a cookie-authenticated mutation is missing the CSRF header.
+- `429` means too many sign-in attempts (see `POST /api/login`).
 
 ---
 
@@ -90,7 +91,7 @@ The server keeps an internal record of when each post was added (`allowed_at`, `
 ### Session
 | Method | Path | Body | Returns |
 |---|---|---|---|
-| POST | `/api/login` | `{ "key": "<ADMIN_KEY>" }` | `{ "ok": true }` + cookie. `401` on a wrong key |
+| POST | `/api/login` | `{ "key": "<ADMIN_KEY>" }` | `{ "ok": true }` + cookie. `401` on a wrong key. `429` with a `Retry-After` header (seconds) after 10 attempts from one IP in 15 minutes |
 | POST | `/api/logout` | | `{ "ok": true }`, clears the cookie |
 
 ### Overview
@@ -105,12 +106,15 @@ The server keeps an internal record of when each post was added (`allowed_at`, `
     "account_error": null,
     "webhook_callback": true,        // app webhook points at this Worker
     "webhook_comments": true,        // app subscribed to the "comments" field
-    "account_subscribed": true       // account subscribed to the app
+    "account_subscribed": true,      // account subscribed to the app
+    "webhook_postbacks": null        // button taps (messaging_postbacks): null if no enabled automation uses follow to unlock, else true or false
   },
   "totals": { "automations": 3, "active": 3, "sent_24h": 3, "sent_total": 3, "failed": 0, "pending": 0 },
   "settings": { "dry_run": false, "exclude_media_ids": [] }
 }
 ```
+
+`webhook_postbacks` is only checked when an enabled automation has `follow_gate` on. When it is `false`, `health.ok` is `false` and the dashboard shows a "Button taps not subscribed" banner. `null` does not affect `ok`.
 
 `totals.automations` and `totals.active` come from the config; `sent_24h`, `failed` and `pending` come from the ledger's last 24 hours, and `sent_total` is the ledger's all-time sent count. `account` is `null` when it can't be read. `health` makes live calls to Meta, so this route is the slowest one.
 
@@ -123,12 +127,13 @@ The server keeps an internal record of when each post was added (`allowed_at`, `
 | DELETE | `/api/automations/:id` | | `{ "ok": true }` |
 | POST | `/api/automations/reorder` | `{ "ids": ["a_1","a_2"] }` | `{ "ok": true }` |
 
-Editable fields: `name`, `enabled`, `keyword`, `aliases`, `match`, `dm`, `link`, `ack`, `all_posts`, `media_ids`. Anything else in the body is ignored. Keywords and aliases are stored uppercase.
+Editable fields: `name`, `enabled`, `keyword`, `aliases`, `match`, `dm`, `link`, `ack`, `like`, `follow_gate`, `opener`, `opener_button`, `gate_text`, `gate_button`, `all_posts`, `media_ids`. Anything else in the body is ignored. Keywords and aliases are stored uppercase.
 
 Validation errors come back as `400 { "error": "…" }`:
 - `keyword` (at most 60 characters) and `dm` are required. `name` is at most 80.
 - `link` must be `http(s)://…` or empty.
 - The DM, including the link, is at most 1000 characters. `ack` is at most 300.
+- `opener` and `gate_text` are at most 600 characters. `opener_button` and `gate_button` are at most 20 characters.
 - A keyword or alias already used by **another enabled automation on an overlapping post** is rejected, and the message names that automation. An all-posts automation overlaps with every other one. Paused automations are ignored, so the check also runs when you re-enable one.
 
 New posts in `media_ids` get an `allowed_at` timestamp of "now". Switching `all_posts` from false to true does the same for all posts, so existing comments wait instead of firing.
@@ -158,8 +163,15 @@ New posts in `media_ids` get an `allowed_at` timestamp of "now". Switching `all_
 | POST | `/api/try` | `{ "text": "diwalii pls", "media_id": "…" (optional) }` | `{ "match": { "automation_id","name","keyword","mode" } \| null }`. Tests **saved, enabled** automations only; unsaved edits in the editor aren't included. With `media_id`, only automations running on that post are considered. `text` is cut to 500 characters. |
 | GET | `/api/activity?limit=50` | | `{ "items": [Activity] }`, newest first |
 | POST | `/api/reconnect` | | `{ "link": "https://www.facebook.com/…" }`: open it to reconnect Instagram. The link is valid for 15 minutes. `409` if `APP_ID` or `LOGIN_CONFIG_ID` isn't set |
+| POST | `/api/alerts/test` | | `{ "sent": 1, "channels": [...] }`: sends a test message to the alert webhook. `sent` counts the channels that accepted it. `409` if no alert webhook is set |
 | PUT | `/api/settings` | `{ "dry_run"?: bool, "exclude_media_ids"?: [...] }` | `{ "settings": { "dry_run", "exclude_media_ids" } }` |
 
 `PUT /api/settings` is a **partial update**: only fields present in the body change, and an omitted field keeps its current value. `dry_run` is `true` only for a literal `true`. `exclude_media_ids` replaces the whole list, and invalid ids are dropped.
 
 `GET /api/activity` also fills in `automation_id` and `automation_name` for older records by matching on keyword.
+
+---
+
+## Admin routes
+
+`/admin/*` is internal. It backs the `npm run admin` CLI and needs `Authorization: Bearer <ADMIN_KEY>`; session cookies don't work there. The routes can change between versions, so use `/api/*` for your own scripts.

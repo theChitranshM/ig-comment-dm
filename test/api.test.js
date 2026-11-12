@@ -392,6 +392,17 @@ describe("auth", () => {
     assert.equal(r.headers.get("set-cookie"), null);
     assert.ok(r.json.error);
   });
+  test("sign-in attempts are rate limited per IP (10 per 15 min); other IPs unaffected", async () => {
+    const from = (ip, key) => req("POST", "/api/login", { auth: { "cf-connecting-ip": ip }, body: { key } });
+    for (let i = 0; i < 10; i++) assert.equal((await from("1.1.1.1", "nope")).status, 401);
+    const blocked = await from("1.1.1.1", "adm"); // even the right key is refused while throttled
+    assert.equal(blocked.status, 429);
+    assert.ok(Number(blocked.headers.get("retry-after")) > 0);
+    assert.equal((await from("2.2.2.2", "adm")).status, 200);
+  });
+  test("non-string key is rejected", async () => {
+    assert.equal((await req("POST", "/api/login", { auth: "none", body: { key: ["adm"] } })).status, 401);
+  });
   test("login missing key / bad JSON -> 401", async () => {
     assert.equal((await req("POST", "/api/login", { auth: "none", body: {} })).status, 401);
     const bad = await api(new Request(ORIGIN + "/api/login", { method: "POST", body: "{not json" }), env, new URL(ORIGIN + "/api/login"));
@@ -1085,7 +1096,7 @@ describe("GET /api/overview", () => {
     await webhook({ id: "C1", text: "one", media: "A" });
     const r = await req("GET", "/api/overview");
     assert.equal(r.status, 200);
-    assert.deepEqual(r.json.health, { ok: true, token: true, account: true, account_error: null, webhook_callback: true, webhook_comments: true, account_subscribed: true });
+    assert.deepEqual(r.json.health, { ok: true, token: true, account: true, account_error: null, webhook_callback: true, webhook_comments: true, account_subscribed: true, webhook_postbacks: null });
     assert.deepEqual(r.json.account, { id: IG_ID, username: "testuser", name: "Test User", picture: "https://pic/x.jpg", followers: 42 });
     const t = r.json.totals;
     assert.equal(t.automations, 2);
@@ -1097,6 +1108,18 @@ describe("GET /api/overview", () => {
     for (const k of ["automations", "active", "sent_24h", "sent_total", "failed", "pending"]) assert.equal(typeof t[k], "number", k);
     assert.equal(r.json.settings.dry_run, false);
     assert.deepEqual(r.json.settings.exclude_media_ids, ["E"]);
+  });
+
+  test("follow to unlock on but button taps not subscribed -> webhook_postbacks false, ok false; subscribed -> ok", async () => {
+    await putV2([mk({ id: "a_A", keyword: "ONE", follow_gate: true })]);
+    let h = (await req("GET", "/api/overview")).json.health;
+    assert.equal(h.webhook_postbacks, false);
+    assert.equal(h.ok, false);
+    extra.subscriptions = { data: [{ object: "instagram", active: true, callback_url: `${ORIGIN}/webhook`, fields: [{ name: "comments" }, { name: "messaging_postbacks" }] }] };
+    extra.subscribedApps = { data: [{ app_id: "999", subscribed_fields: ["comments", "messaging_postbacks"] }] };
+    h = (await req("GET", "/api/overview")).json.health;
+    assert.equal(h.webhook_postbacks, true);
+    assert.equal(h.ok, true);
   });
 
   test("totals count failures and pending", async () => {
@@ -1292,5 +1315,15 @@ describe("home-screen install", () => {
     assert.match(html, /rel="manifest"/); assert.match(html, /apple-touch-icon/);
     const csp = (await worker.fetch(new Request("https://x/app"), env, ctx)).headers.get("content-security-policy");
     assert.match(csp, /manifest-src 'self'/);
+  });
+});
+
+describe("hardening", () => {
+  test("icon route only serves known files (no prototype keys)", async () => {
+    const worker = (await import("../src/index.js")).default;
+    const e = makeEnv(); const c = makeCtx();
+    for (const n of ["constructor", "__proto__", "toString", "../index.js"]) {
+      assert.equal((await worker.fetch(new Request("https://x/app/icons/" + n), e, c)).status, 404, n);
+    }
   });
 });

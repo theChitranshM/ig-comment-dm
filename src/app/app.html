@@ -663,6 +663,7 @@ function healthIssues(hl) {
   else if (!hl.account) out.push({ short: 'Instagram disconnected', msg: 'Instagram rejected the saved token' + (hl.account_error ? ` (${String(hl.account_error).replace(/\.+$/, '')})` : '') + '. Nothing can be sent until it works again.', fix: 'Reconnect Instagram to refresh access.', re: true, sev: 'bad' });
   if (!hl.webhook_callback) out.push({ short: 'Webhook misdirected', msg: "Instagram isn't delivering comments to this Worker. The callback URL in your Meta app points somewhere else.", fix: 'Fix the callback URL in your Meta app, then run npm run admin -- check.', sev: 'warn' });
   if (!hl.webhook_comments) out.push({ short: 'Comments not subscribed', msg: "Your Meta app isn't subscribed to the comments field, so new comments won't arrive live.", fix: 'Subscribe to comments under Webhooks, Instagram, in your Meta app. Polling still catches them within 5 minutes.', sev: 'warn' });
+  if (hl.webhook_postbacks === false) out.push({ short: 'Button taps not subscribed', msg: "Follow to unlock is on, but button taps aren't reaching the Worker, so people who tap get nothing.", fix: 'Run npm run admin -- subscribe.', sev: 'bad' });
   if (!hl.account_subscribed) out.push({ short: 'Account not subscribed', msg: "Your Instagram account isn't subscribed to this app.", fix: 'Run npm run admin -- subscribe.', sev: 'warn' });
   if (!out.length && hl.ok === false) out.push({ short: 'Needs attention', msg: 'A health check is failing.', fix: 'Run npm run admin -- check for details.', sev: 'warn' });
   return out;

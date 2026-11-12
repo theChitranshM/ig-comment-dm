@@ -6,7 +6,7 @@
 //
 // Record: { item, stage: new|dm_sent|done|done_noack|failed, attempts, leaseUntil, created, updated, note }
 
-const OPS = new Set(["enqueue", "begin", "advance", "release", "pending", "get", "status", "prune", "stats", "activity", "lookup", "once"]);
+const OPS = new Set(["enqueue", "begin", "advance", "release", "pending", "get", "status", "prune", "stats", "activity", "lookup", "once", "hit"]);
 const SENT = new Set(["dm_sent", "done", "done_noack"]);
 const TERMINAL = new Set(["done", "done_noack", "failed"]);
 const LEASE_MS = 120_000;
@@ -146,8 +146,22 @@ export class Ledger {
     return { first: true };
   }
 
+  // Fixed-window rate limit: counts hits on `key`; ok=false once `limit` is reached inside `windowMs`.
+  async hit({ key, limit = 10, windowMs = 900_000, now }) {
+    const k = `r:${key}`;
+    const rec = await this.storage.get(k);
+    const cur = rec && now - rec.start < windowMs ? rec : { start: now, n: 0 };
+    if (cur.n >= limit) return { ok: false, retryAfter: Math.ceil((cur.start + windowMs - now) / 1000) };
+    cur.n += 1;
+    await this.storage.put(k, cur);
+    return { ok: true, count: cur.n };
+  }
+
   async prune({ now }) {
     let removed = 0;
+    for (const [k, rec] of await this.storage.list({ prefix: "r:" })) {
+      if (now - rec.start > 86_400_000) { await this.storage.delete(k); removed++; }
+    }
     for (const [k, rec] of await this.storage.list({ prefix: "p:" })) {
       if (now - rec.created > KEEP_MS) { await this.storage.delete(k); removed++; }
     }

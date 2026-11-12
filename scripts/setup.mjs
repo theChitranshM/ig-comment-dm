@@ -44,6 +44,7 @@ const igUser = (await ask("Your Instagram username (without @)", cur("IG_USERNAM
 console.log(dim("\n  From your Meta app (docs/SETUP.md, Part A):"));
 const appId = await ask("Meta App ID (App settings → Basic)", cur("APP_ID"));
 const configId = await ask("Configuration ID (Use cases → Customize → API setup with Unified login)", cur("LOGIN_CONFIG_ID"));
+if (!/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(name)) die("Worker name: lowercase letters, digits and dashes only (max 63).");
 if (!/^\d+$/.test(appId)) die("App ID should be digits only.");
 if (!/^\d+$/.test(configId)) die("Configuration ID should be digits only.");
 

@@ -329,4 +329,4 @@ http.createServer(async (req, res) => {
     if (url.pathname.startsWith('/api/')) return await api(req, res, url);
     json(res, 404, { error: 'Not found.' });
   } catch (e) { console.error(e); json(res, 500, { error: 'Mock server error: ' + e.message }); }
-}).listen(PORT, () => console.log(`ui-mock on http://localhost:${PORT}/app  (login key: dev)`));
+}).listen(PORT, "127.0.0.1", () => console.log(`ui-mock on http://localhost:${PORT}/app  (login key: dev)`));

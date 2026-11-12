@@ -1,6 +1,6 @@
 # Setup guide
 
-This takes about 30 minutes the first time, and most of it is clicking through Meta's dashboard. Every step below was done for real while building this tool, including the parts Meta doesn't document well.
+This takes about 30 minutes the first time, and most of it is clicking through Meta's dashboard. These steps were verified against a real Meta app, including the parts Meta doesn't document well.
 
 **You'll go through:**
 - Part A: Meta app
@@ -33,7 +33,8 @@ This takes about 30 minutes the first time, and most of it is clicking through M
 4. On **API setup with Unified login → 1. Configure your app**, click **Create new configuration**:
    - Access token: **System-user access token** (never expires)
    - Assets: **Instagram account**
-   - Permissions: keep `instagram_basic`, `instagram_manage_comments`, `instagram_manage_messages`, and add `instagram_manage_engagement` (lets it like comments; optional)
+   - Permissions: keep `instagram_basic`, `instagram_manage_comments` and `instagram_manage_messages`
+   - Liking comments is optional and needs more setup. See [Optional: liking comments](#optional-liking-comments) after you finish the main steps.
 
    Save it and copy the **Configuration ID** shown on the card.
 5. **App settings → Basic:** copy the **App ID**, then click **Show** next to **App secret** and keep that page open.
@@ -81,7 +82,7 @@ All of these are printed at the end of `npm run setup`.
 
 On **App settings → Basic**, also set a **category** and click **Save changes**.
 
-> Under Configure webhooks, clicking **Subscribe** next to `comments` is easy to miss. You don't have to hunt for it: `npm run admin -- subscribe` in Part D subscribes that field for you, and `check` confirms it.
+> Under Configure webhooks, clicking **Subscribe** next to `comments` is easy to miss. You don't have to hunt for it: `npm run admin -- subscribe` in Part D subscribes `comments` and `messaging_postbacks` (button taps, used by follow to unlock) for you, and `check` confirms it.
 
 ---
 
@@ -93,10 +94,12 @@ npm run admin -- connect
 
 This opens Meta's login. **On the assets screen, select your Instagram account**, then finish. You'll land on a "Connected ✅" page. The token is stored inside your Worker and is never shown.
 
-Now tell the Worker which account it acts as:
+Now tell the Worker which account it acts as.
+
+> **Why not read the ID automatically?** Meta's `/me/assigned_instagram_accounts` often comes back **empty** for this kind of token, even when it can act on your account. Reading the ID from Business Settings is the reliable way.
 
 1. Get your **Instagram account ID** from [business.facebook.com](https://business.facebook.com) → Settings → Accounts → **Instagram accounts** → click your account. The ID is under the username.
-2. Save it and subscribe the webhooks:
+2. Save it and subscribe the webhooks (`comments` and `messaging_postbacks`):
    ```bash
    npm run admin -- set-ig-id 17841400000000000
    npm run admin -- subscribe
@@ -110,6 +113,8 @@ Connection
   ✓ Token: system_user, connect flow (KV), never expires
   ✓ Account: @yourname (17841400000000000)
   ✓ Permissions: instagram_basic, instagram_manage_comments, instagram_manage_messages
+  ● Liking is off: add instagram_manage_engagement to your configuration, then reconnect (docs/SETUP.md, "Optional: liking comments")
+
 Webhooks
   ✓ App callback points at this Worker
   ✓ App subscribed to the "comments" field
@@ -120,13 +125,13 @@ Config
 ! No automation is running on any post yet. Open the dashboard (/app) or: npm run admin -- allow 1
 ```
 
+The "Liking is off" line is information, not an error. You only need to fix it if you want to like comments. If you plan to use follow to unlock, `check` also prints a "Follow to unlock needs button taps" line until `subscribe` has run.
+
 ### Open the dashboard
 
 Go to `https://<worker>/app`. Opening the bare Worker URL (`/`) redirects there. `npm run setup` printed the exact address.
 
-Sign in with the **admin key**: the `ADMIN_KEY` line in `.secrets.local` in your project folder. The dashboard keeps you signed in for 30 days with a secure cookie. The top bar shows a health indicator; once the checks above pass it turns green. If it shows a banner instead, see [Troubleshooting](TROUBLESHOOTING.md#the-dashboard-shows-a-health-banner).
-
-> **Why not read the ID automatically?** Meta's `/me/assigned_instagram_accounts` often comes back **empty** for this kind of token, even when it can act on your account. Reading the ID from Business Settings is the reliable way.
+Sign in with the **admin key**: the `ADMIN_KEY` line in `.secrets.local` in your project folder. The dashboard keeps you signed in for 30 days with a secure cookie. On a phone, you can install the dashboard like an app: open `/app` and choose Add to Home Screen. It opens full screen as "Comment DM". On iPhone you sign in once inside the installed app. The top bar shows a health indicator; once the checks above pass it turns green. If it shows a banner instead, see [Troubleshooting](TROUBLESHOOTING.md#the-dashboard-shows-a-health-banner).
 
 ---
 
@@ -149,7 +154,7 @@ An automation is a keyword, the message it sends, and the posts it runs on.
 
 1. In the dashboard, open **Automations → New automation**.
 2. Enter the **keyword** people will comment (for example `GUIDE`). Add aliases for plurals or nicknames if you like.
-3. Write the **DM**, add an optional **link**, and an optional **public reply**. The preview shows what people will see.
+3. Write the **DM**, add an optional **link**, an optional **public reply**, and choose whether to **like their comment** or use **follow to unlock**. The preview shows what people will see.
 4. Under **Posts**, pick the posts it should run on, or choose all posts. Trial reels are marked in the picker.
 5. Type a sample comment into **Try a comment** to check the match, then save.
 

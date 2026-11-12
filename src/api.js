@@ -72,16 +72,18 @@ function withStats(a, stats) {
 // ---------- health (shared with the overview) ----------
 
 async function health(env, origin) {
-  const h = { ok: false, token: false, account: false, account_error: null, webhook_callback: false, webhook_comments: false, account_subscribed: false };
+  const h = { ok: false, token: false, account: false, account_error: null, webhook_callback: false, webhook_comments: false, account_subscribed: false, webhook_postbacks: null };
   h.token = Boolean((await env.KV.get("token", "json").catch(() => null))?.access_token ?? env.IG_TOKEN);
-  let account = null;
+  let account = null, accountPostbacks = false;
   if (h.token && env.IG_ID) {
     const r = await graph(env, "GET", String(env.IG_ID), { query: { fields: "id,username,name,profile_picture_url,followers_count" } });
     h.account = r.ok;
     h.account_error = r.ok ? null : r.error;
     if (r.ok) account = { id: r.data.id, username: r.data.username, name: r.data.name ?? null, picture: r.data.profile_picture_url ?? null, followers: r.data.followers_count ?? null };
     const s = await graph(env, "GET", `${env.IG_ID}/subscribed_apps`);
-    h.account_subscribed = s.ok && (s.data.data ?? []).some((a) => String(a.app_id) === String(env.APP_ID) && (a.subscribed_fields ?? []).includes("comments"));
+    const mine = s.ok ? (s.data.data ?? []).find((a) => String(a.app_id) === String(env.APP_ID)) : null;
+    h.account_subscribed = Boolean(mine?.subscribed_fields?.includes("comments"));
+    accountPostbacks = Boolean(mine?.subscribed_fields?.includes("messaging_postbacks"));
   } else if (!env.IG_ID) h.account_error = "Instagram account ID isn't set (npm run admin -- set-ig-id).";
   else h.account_error = "Instagram isn't connected yet.";
   if (env.APP_ID && env.APP_SECRET) {
@@ -91,8 +93,12 @@ async function health(env, origin) {
     const ig = (a.data ?? []).find((x) => x.object === "instagram");
     h.webhook_callback = Boolean(ig?.active && ig?.callback_url === `${origin}/webhook`);
     h.webhook_comments = Boolean(ig?.fields?.some((f) => f.name === "comments"));
+    // Button taps only matter when an enabled automation uses follow to unlock; null = not needed.
+    const cfg = await getConfig(env);
+    if (cfg.automations.some((x) => x.enabled !== false && x.follow_gate))
+      h.webhook_postbacks = Boolean(ig?.fields?.some((f) => f.name === "messaging_postbacks")) && Boolean(accountPostbacks);
   }
-  h.ok = h.token && h.account && h.webhook_callback && h.webhook_comments && h.account_subscribed;
+  h.ok = h.token && h.account && h.webhook_callback && h.webhook_comments && h.account_subscribed && h.webhook_postbacks !== false;
   return { health: h, account };
 }
 
@@ -114,8 +120,15 @@ export async function api(request, env, url) {
   const method = request.method;
 
   if (method === "POST" && path === "/api/login") {
+    // Defence in depth on top of a 256-bit key: at most 10 sign-in attempts per IP per 15 minutes.
+    const ip = request.headers.get("cf-connecting-ip") ?? "unknown";
+    const gate = await ledger(env)("hit", { key: `login:${ip}`, limit: 10, windowMs: 900_000 });
+    if (!gate.ok) {
+      log("login_throttled");
+      return json({ error: "Too many sign-in attempts. Try again in a few minutes." }, 429, { "retry-after": String(gate.retryAfter) });
+    }
     const body = await readBody(request);
-    if (!env.ADMIN_KEY || !body?.key || !(await same(body.key, env.ADMIN_KEY))) {
+    if (!env.ADMIN_KEY || typeof body?.key !== "string" || !body.key || !(await same(body.key, env.ADMIN_KEY))) {
       log("login_failed");
       return fail(401, "That key doesn't match ADMIN_KEY.");
     }

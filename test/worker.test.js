@@ -581,6 +581,17 @@ describe("follow to unlock", () => {
     await tap("unlock:a_diwali:1", { mid: "PB6" });
     assert.deepEqual(sends()[0].body.message, { text: DIWALI_DM });
   });
+  test("a person hammering the button is throttled (6 taps a minute)", async () => {
+    await gateOn();
+    for (let i = 0; i < 9; i++) await tap("unlock:a_diwali:2", { mid: "H" + i });
+    assert.equal(sends().length, 6);
+  });
+  test("non-numeric sender ids are ignored", async () => {
+    await gateOn();
+    g.follows["777"] = true;
+    await tap("unlock:a_diwali:1", { mid: "N1", sender: "../me" });
+    assert.equal(sends().length, 0);
+  });
   test("ignores own echoes, foreign payloads, paused automations and preview mode", async () => {
     await gateOn();
     g.follows["777"] = true;

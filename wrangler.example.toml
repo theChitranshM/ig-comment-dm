@@ -10,7 +10,7 @@ type = "Text"
 globs = ["**/*.html"]
 fallthrough = true
 
-# Workers KV: live config (rules, scope) + the access token from the connect flow.
+# Workers KV: live config (automations, settings) + the access token from the connect flow.
 [[kv_namespaces]]
 binding = "KV"
 id = "<KV_NAMESPACE_ID>"
@@ -40,8 +40,8 @@ GRAPH_HOST = "graph.facebook.com"          # Unified login (Facebook Login for B
 TOKEN_KIND = "system_user"                 # never expires · "ig_login" = legacy 60-day refresh route
 API_VERSION = "v27.0"
 DAILY_CRON = "17 10 * * *"
-POLL_RECENT_MEDIA = "4"                    # posts polled every 5 min when scope.mode = "all"
-FULL_SWEEP_MEDIA = "8"                     # posts swept daily when scope.mode = "all"
+POLL_RECENT_MEDIA = "4"                    # recent posts polled every 5 min for "all posts" automations
+FULL_SWEEP_MEDIA = "8"                     # recent posts swept daily for "all posts" automations
 MAX_SENDS_PER_RUN = "5"                    # free-plan Workers allow ~50 outbound calls per run; extra sends wait 5 min
 
 # Secrets — never in this file (set by `npm run setup`, or `npx wrangler secret put <NAME>`):

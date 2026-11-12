@@ -6,8 +6,10 @@
 |---|---|---|
 | `src/index.js` | Worker | webhook endpoint, OAuth callback, privacy pages, the `/app` dashboard page, cron |
 | `src/app/app.html` | served by the Worker | the dashboard: one HTML file with inline CSS and JS, no external assets |
+| `/app/manifest.webmanifest`, `/app/icons/*` | served by the Worker (`src/index.js`, `src/app/icons.js`) | the home-screen install: web manifest and app icons |
 | `src/api.js` | Worker routes | the `/api/*` JSON API behind the dashboard ([API.md](API.md)) |
 | `src/admin.js` | Worker routes | the `/admin/*` API behind `npm run admin` (bearer-key protected) |
+| `src/gate.js` | none | follow to unlock: builds the button DM, reads button taps and checks whether the person follows you |
 | `src/automations.js` | none | the automation model, validation, and migration from v1 configs |
 | `src/core.js` | none | signature check, payload parsing, matching, the `classify()` decision, Graph API calls, polling |
 | `src/ledger.js` | Durable Object (SQLite) | one record per comment: the dedupe gate and retry queue |
@@ -57,6 +59,7 @@ The converted config is written back in v2 form the first time you save from the
 1. **Arrival.** Comments arrive two ways:
    - **Webhook:** Meta POSTs to `/webhook`. The Worker checks `X-Hub-Signature-256` (HMAC-SHA256 of the raw body with your Meta app secret), answers `200` immediately, and does the rest after the response.
    - **Poll:** every 5 minutes it reads the newest comments on posts that are switched on. Once a day it sweeps everything in Instagram's 7-day reply window. This catches comments a webhook missed: downtime, a bad deploy, anything Meta didn't deliver.
+   - **Button taps** (follow to unlock only) arrive at the same `/webhook` as `messaging_postbacks` events. They are checked and handled as described in [Follow to unlock: the tap branch](#follow-to-unlock-the-tap-branch).
 2. **Filters**, in the order `classify()` in `src/core.js` applies them. The first that matches skips the comment, and the reason is logged for webhook comments:
    1. no commenter info (`no_sender`)
    2. your own comment, by account ID or username (`self`)
@@ -72,9 +75,23 @@ The converted config is written back in v2 form the first time you save from the
 
    After `classify()`, matching comments are checked against the ledger. Ones the ledger has already finished are dropped, so they never count as waiting and don't use up the send budget.
 3. **Claim.** Matching comments go into the ledger with insert-if-absent. A worker must then `begin` the comment, which takes a 2-minute lease atomically. Only one caller can hold it.
-4. **DM.** `POST /<IG_ID>/messages` with `recipient: { comment_id }`. On success the stage becomes `dm_sent`. On a temporary error the lease is released for retry. On a permanent error the comment is marked `failed`, and **no public reply is posted**.
-5. **Public reply.** `POST /<COMMENT_ID>/replies`. On a temporary error only this step is retried. The DM is never sent twice, because the stage already says `dm_sent`.
-6. **Done.** Records are pruned after 30 days.
+4. **DM.** `POST /<IG_ID>/messages` with `recipient: { comment_id }`. On success the stage becomes `dm_sent`. On a temporary error the lease is released for retry. On a permanent error the comment is marked `failed`, and **no public reply is posted**. With follow to unlock on, this DM is a button message instead of the link. If Instagram permanently rejects the button, the plain DM with the link is sent instead (`gate_dm_rejected` in the logs).
+5. **Like (optional).** If the automation has `like` on, `POST /<IG_ID>/likes` with `comment_id`. It runs once, after the DM succeeded. It is best effort: a failure is logged as `like_failed` and never blocks the public reply or causes a retry. It uses the like-only connection if you set one up (see [SETUP](SETUP.md#optional-liking-comments)), otherwise the main token.
+6. **Public reply.** `POST /<COMMENT_ID>/replies`. On a temporary error only this step is retried. The DM is never sent twice, because the stage already says `dm_sent`.
+7. **Done.** Records are pruned after 30 days.
+
+### Follow to unlock: the tap branch
+
+This branch only exists when an automation has `follow_gate` on. Steps 1 to 7 above run as usual, with the button DM from step 4. What happens next is driven by the person, not the comment:
+
+1. The person taps the button. Instagram sends a `messaging_postbacks` webhook with a payload like `unlock:<automation id>:<step>`. Only these payloads are read. Message text is never parsed, stored or logged.
+2. `handlePostback()` in `src/gate.js` acts once per tap (it dedupes on the message id, since Meta retries webhooks) and allows at most 6 taps per minute per person.
+3. It asks Instagram `is_user_follow_business` for that person.
+4. A follower gets the DM with your message and link.
+5. Anyone else gets `gate_text` with a re-check button. If they tap again and still don't follow, they get a fixed "can't see the follow yet" message, with the same button.
+6. If the follow check itself fails, the person gets the link. Follow to unlock is a nudge, not access control.
+
+Preview mode and paused automations ignore taps.
 
 ## Why a Durable Object and not KV for dedupe
 
@@ -90,7 +107,7 @@ If the public "sent, check your dms" went out first and the DM then failed (the 
 
 Each 5-minute poll is one API call per post listed in an enabled automation. If any enabled automation runs on all posts, it adds one call for the media list plus one per recent post (`POLL_RECENT_MEDIA`, default 4). That's about 60 calls an hour, far below Meta's limits. The daily sweep reads up to two pages of comments on up to `FULL_SWEEP_MEDIA` posts (default 8).
 
-A free-plan Worker can make about 50 outbound calls per run, and each send costs about 5 (ledger and Graph API). So each run sends at most `MAX_SENDS_PER_RUN` (default 5). The rest stay queued in the ledger, and the next run's retry sweep sends them, still exactly once.
+A free-plan Worker can make about 50 outbound calls per run, and each send costs about 5 to 6 (ledger, DM, like and public reply). So each run sends at most `MAX_SENDS_PER_RUN` (default 5). The rest stay queued in the ledger, and the next run's retry sweep sends them, still exactly once.
 
 ## Tokens
 

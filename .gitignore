@@ -1,5 +1,7 @@
 node_modules/
 .dev.vars
+.env*
+*.log
 .wrangler/
 
 # your deployment — ids, secrets, live config

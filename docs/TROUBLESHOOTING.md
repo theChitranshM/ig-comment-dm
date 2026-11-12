@@ -8,7 +8,7 @@ npm run admin -- check
 
 It points at most problems directly. The dashboard's **Settings → Connection** shows the same checks. Each entry below is something that actually happened while building this tool.
 
-Contents: [Dashboard login](#i-cant-sign-in-to-the-dashboard) · [Health banner](#the-dashboard-shows-a-health-banner) · [People waiting](#the-dashboard-says-n-people-waiting) · [Nothing fires](#a-keyword-comment-didnt-get-a-dm)
+Contents: [Dashboard login](#i-cant-sign-in-to-the-dashboard) · [Health banner](#the-dashboard-shows-a-health-banner) · [People waiting](#the-dashboard-says-n-people-waiting) · [Webhooks](#webhook-saved-but-nothing-arrives) · [Nothing fires](#a-keyword-comment-didnt-get-a-dm) · [Follow to unlock](#follow-to-unlock-people-tap-the-button-and-nothing-happens) · [Liking](#comments-arent-getting-liked) · [Failed DMs](#dm_failed-in-the-logs) · [Alerts](#how-do-i-find-out-when-something-breaks)
 
 ---
 
@@ -22,6 +22,7 @@ Open `https://<worker>/app`. The Worker URL is in `.secrets.local` as `WORKER`.
 | Sign-in succeeds, then you land back on the login screen | The session cookie is `Secure`, so the browser only keeps it over **HTTPS**. Use the `https://…workers.dev` address, not `http://`. Plain-HTTP local servers such as `wrangler dev` won't keep a login. |
 | Same, on HTTPS | Cookies may be blocked for the site, or you're in a private window with cookies off. Allow cookies for the Worker's domain. |
 | Signed out after a while | Sessions last 30 days. Changing `ADMIN_KEY` signs out every device. |
+| "Too many sign-in attempts" (429) | Sign-in allows 10 attempts per IP address per 15 minutes. Wait a few minutes, then try again with the right key. |
 | A change fails with "Missing request header" (403) | Only seen when calling the API yourself with the cookie. Send `X-Requested-With: ig-comment-dm`, or use `Authorization: Bearer <ADMIN_KEY>` instead. See [API.md](API.md). |
 
 ### The dashboard shows a health banner
@@ -34,6 +35,7 @@ The banner and the health dot in the top bar come from the same checks as `npm r
 | **Webhook misdirected** | The callback URL in your Meta app doesn't point at this Worker. | Set it to `https://<worker>/webhook` under Use cases → Customize → Configure webhooks, then run `check`. |
 | **Comments not subscribed** | Your Meta app isn't subscribed to the `comments` field. Live delivery is off, but the 5-minute poll still catches comments. | `npm run admin -- subscribe`, or click **Subscribe** next to `comments` in Meta. |
 | **Account not subscribed** | Your Instagram account isn't subscribed to the app. | `npm run admin -- subscribe`. |
+| **Button taps not subscribed** | An enabled automation uses follow to unlock, but your app or account isn't subscribed to `messaging_postbacks`. People who tap the button get nothing. | `npm run admin -- subscribe`, then `check`. See [Follow to unlock](#follow-to-unlock-people-tap-the-button-and-nothing-happens). |
 | **Needs attention** | A check is failing without a more specific cause. | Run `npm run admin -- check` for details. |
 
 A blue **Preview mode** banner isn't a fault. It means nothing is being sent. Turn it off in Settings or from the banner.
@@ -63,7 +65,7 @@ The token is valid, but the system user behind it **can no longer act on your In
 **While it's broken:** turn on **preview mode** (Settings in the dashboard, or `"dry_run": true` via `config pull` and `config push`) so incoming comments aren't recorded as failed sends. After reconnecting, turn it off and send to the **waiting** comments in the dashboard (or `npm run admin -- backfill`).
 
 ### Connected, but `/me/assigned_instagram_accounts` is empty
-That's normal for Unified-login system-user tokens: the list can be empty even when access works. The tool checks your account ID directly instead (`set-ig-id`). If `check` shows ✓ Account, you're fine.
+That's normal for Unified login system-user tokens: the list can be empty even when access works. The tool checks your account ID directly instead (`set-ig-id`). If `check` shows ✓ Account, you're fine.
 
 ### Webhook "Verify and save" fails
 - Make sure the verify token matches `VERIFY_TOKEN` in `.secrets.local` exactly. `npm run setup` copies it to your clipboard.
@@ -77,8 +79,9 @@ Run `npm run admin -- check` and look at the **Webhooks** section:
 |---|---|
 | App subscribed to the "comments" field | `npm run admin -- subscribe` (or click **Subscribe** next to `comments` under Configure webhooks) |
 | Your account subscribed to the app | `npm run admin -- subscribe` |
+| Follow to unlock needs button taps (`messaging_postbacks`) | `npm run admin -- subscribe`. Only matters if an automation uses follow to unlock. |
 
-If all three are green, also check:
+If everything is green, also check:
 - The app must be **Published** (Live).
 - Your Instagram account must be **public**.
 
@@ -102,7 +105,7 @@ Then run `npm run admin -- logs` and have someone comment again. Every webhook c
 No `webhook` line at all means Meta never delivered it. The 5-minute poll still picks the comment up, as long as an enabled automation runs on its post. Polls don't log skips: they re-read the same comments every 5 minutes, so the log would fill with noise.
 
 ### Follow to unlock: people tap the button and nothing happens
-Button taps arrive as `messaging_postbacks` webhooks. Run `npm run admin -- subscribe`, then `npm run admin -- check`; it warns if that field is missing. Logs show `unlocked`, `gate_sent`, or `follow_check_failed` for every tap. If Instagram won't say whether someone follows you, they get the link anyway rather than being stuck. If Instagram refuses the button message itself (`gate_dm_rejected`), the plain link is sent instead.
+Button taps arrive as `messaging_postbacks` webhooks. Run `npm run admin -- subscribe`, then `npm run admin -- check`; it warns if that field is missing. Logs show `unlocked`, `gate_sent`, or `follow_check_failed` for every tap. If Instagram won't say whether someone follows you, they get the link anyway rather than being stuck. If Instagram refuses the button message itself (`gate_dm_rejected`), the plain link is sent instead. Taps are limited to 6 per minute per person, so someone pressing the button repeatedly will see no reply for a short while (`tap_throttled` in the logs).
 
 ### Comments aren't getting liked
 Liking needs the `instagram_manage_engagement` permission on your connection. Follow [SETUP: Optional: liking comments](SETUP.md#optional-liking-comments). `npm run admin -- check` shows the state of that connection.

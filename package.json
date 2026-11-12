@@ -1,10 +1,20 @@
 {
   "name": "ig-comment-dm",
-  "version": "1.0.0",
-  "description": "Comment a keyword, get the link in your DMs. A self-hosted Instagram comment-to-DM tool on a free Cloudflare Worker.",
+  "version": "1.5.0",
+  "description": "Comment a keyword, get the link in your DMs. A self-hosted Instagram comment-to-DM tool with a dashboard, on a free Cloudflare Worker.",
   "private": true,
   "type": "module",
   "license": "MIT",
+  "author": "Chitransh Motwani",
+  "keywords": [
+    "instagram",
+    "comment-to-dm",
+    "instagram-api",
+    "cloudflare-workers",
+    "durable-objects",
+    "automation",
+    "self-hosted"
+  ],
   "engines": {
     "node": ">=22"
   },

@@ -100,7 +100,8 @@ export default {
     if (url.pathname === "/app/manifest.webmanifest")
       return new Response(MANIFEST, { headers: { "content-type": "application/manifest+json", "cache-control": "public, max-age=86400" } });
     if (url.pathname.startsWith("/app/icons/")) {
-      const b = ICONS[url.pathname.slice("/app/icons/".length)];
+      const name = url.pathname.slice("/app/icons/".length);
+      const b = Object.hasOwn(ICONS, name) ? ICONS[name] : null;
       return b ? new Response(b64bytes(b), { headers: { "content-type": "image/png", "cache-control": "public, max-age=604800" } }) : new Response("Not found", { status: 404 });
     }
     if (url.pathname.startsWith("/api/")) {

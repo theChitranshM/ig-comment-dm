@@ -200,7 +200,7 @@ const commands = {
     const { matchRule } = await import("../src/core.js");
     const cfg = await getConfig();
     const r = matchRule(text, (cfg.automations ?? []).filter((a) => a.enabled !== false));
-    console.log(r ? `  ${green("✓")} "${text}" → ${bold(r.name)} ${dim(`(${r.keyword}, ${r.match ?? "fuzzy"})`)}` : `  ${red("✗")} "${text}" matches no rule`);
+    console.log(r ? `  ${green("✓")} "${text}" → ${bold(r.name)} ${dim(`(${r.keyword}, ${r.match ?? "fuzzy"})`)}` : `  ${red("✗")} "${text}" matches no automation`);
   },
 
   async status() {
@@ -263,9 +263,9 @@ ${bold("npm run admin -- <command>")}
   ${bold("skip")} <comment_id>     never act on one comment
   ${bold("preview")}               who would get a DM right now (sends nothing)
   ${bold("backfill")}              preview, confirm, then send to waiting comments (7-day window)
-  ${bold("try")} "<comment>"       which rule would this comment trigger?
+  ${bold("try")} "<comment>"       which automation would this comment trigger?
 
-  ${bold("config pull")} | ${bold("push")}   edit rules locally in config.local.json, push live
+  ${bold("config pull")} | ${bold("push")}   edit automations locally in config.local.json, push live
   ${bold("status")}                recent sends and retries
   ${bold("alerts")} webhook <url>|off|test  Discord/Slack alert when access breaks or DMs fail
   ${bold("logs")}                  live Worker logs
