@@ -2,6 +2,7 @@
 // Auth: an HMAC-signed session cookie from POST /api/login, or `Authorization: Bearer <ADMIN_KEY>`.
 import { graph, getConfig, ledger, poll, matchRule, newBudget, _resetCaches, log } from "./core.js";
 import { normalizeConfig, normalizeAutomation, validateAutomation, applyEdit, runsOn } from "./automations.js";
+import { alertChannels, notify } from "./alerts.js";
 
 const SESSION_DAYS = 30;
 const CSRF_HEADER = "x-requested-with";
@@ -137,6 +138,7 @@ export async function api(request, env, url) {
       account, health: h,
       totals: { automations: cfg.automations.length, active: cfg.automations.filter((a) => a.enabled).length, ...stats.totals, sent_total: stats.totals.sent },
       settings: { dry_run: cfg.dry_run, exclude_media_ids: cfg.exclude_media_ids },
+      alerts: alertChannels(env),
     });
   }
 
@@ -239,6 +241,13 @@ export async function api(request, env, url) {
         return { ...i, automation_id: i.automation_id ?? a?.id ?? null, automation_name: names[i.automation_id] ?? i.automation_name ?? a?.name ?? i.keyword };
       }),
     });
+  }
+
+  if (method === "POST" && path === "/api/alerts/test") {
+    const ch = alertChannels(env);
+    if (!ch.webhook) return fail(409, "No alert webhook is set up. Run: npm run admin -- alerts webhook <url>");
+    const sent = await notify(env, { title: "Test alert", message: "Alerts from ig-comment-dm reach you here." });
+    return json({ sent: sent.filter((s) => s.ok).length, channels: sent });
   }
 
   if (method === "POST" && path === "/api/reconnect") {

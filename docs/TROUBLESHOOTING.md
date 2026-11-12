@@ -125,3 +125,11 @@ Your first Worker on this Cloudflare account. Pick a subdomain in the Cloudflare
 2. Run `npm run admin -- connect`, then `set-ig-id`, then `subscribe`.
 
 Your automations and history are kept.
+
+### How do I find out when something breaks?
+Meta can restrict a new app without warning; every API call then fails with "API access blocked." Nothing is lost while that lasts. Once access returns, the 5-minute poll answers anything missed on active posts, as long as it's within Instagram's 7-day window.
+
+- **Dashboard:** a red banner explains what's wrong and offers **Reconnect Instagram** when that's the fix.
+- **Optional push:** `npm run admin -- alerts webhook <discord-or-slack-webhook-url>`. You get a message when access stays down for 10 minutes, when it comes back, and when DMs fail. Messages contain counts and reasons only, never usernames or comment text.
+- **Why not phone push via ntfy?** Its public server isn't reachable from Cloudflare Workers.
+

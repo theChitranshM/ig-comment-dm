@@ -649,6 +649,15 @@ function healthIssues(hl) {
   if (!out.length && hl.ok === false) out.push({ short: 'Needs attention', msg: 'A health check is failing.', fix: 'Run npm run admin -- check for details.', sev: 'warn' });
   return out;
 }
+async function testAlert(btn) {
+  if (btn) btn.disabled = true;
+  try {
+    const r = await api('POST', '/api/alerts/test');
+    toast(r.sent ? 'Test alert sent. Check your phone.' : 'The alert service didn’t accept it. Try again in a minute.', r.sent ? 'ok' : 'error');
+  } catch (e) { if (e.status !== 401 && !e.network) toast(e.message, 'error'); }
+  finally { if (btn) btn.disabled = false; }
+}
+
 async function reconnect(btn) {
   if (btn) btn.disabled = true;
   const w = window.open('', '_blank');
@@ -1072,6 +1081,15 @@ function viewSettings(main) {
       h('ul', { class: 'chk-list' }, checks.map(([k, t, okMsg]) => h('li', {}, h('span', { class: 'ic ' + (hl[k] ? 'ok-c' : 'bad-c') }, ic(hl[k] ? 'check' : 'x', 16)),
         h('div', {}, h('div', { style: 'font-weight:500' }, t), h('div', { class: 'help' }, hl[k] ? okMsg : (k === 'account' && hl.account_error ? hl.account_error : healthIssues({ ...hl, ok: true, token: true, account: true, webhook_callback: true, webhook_comments: true, account_subscribed: true, [k]: false }).concat(k === 'token' ? [{ msg: 'Not set.' }] : [])[0]?.msg || 'Failing.')))))),
       h('div', { style: 'margin-top:16px' }, h('button', { class: 'btn', type: 'button', onclick: (e) => reconnect(e.currentTarget) }, 'Reconnect Instagram'))),
+    sec('Alerts', 'When Instagram access breaks, comes back, or DMs start failing.', (() => {
+      const al = o.alerts || {};
+      const on = al.webhook;
+      const where = 'your webhook';
+      return h('div', { class: 'line' },
+        h('div', {}, h('div', { style: 'font-weight:500' }, on ? `On, via ${where}` : 'Off'),
+          h('p', { class: 'help' }, on ? 'Notifications include counts and reasons, never usernames or comment text.' : 'Problems always show as a banner here. To get a Discord or Slack message too: npm run admin -- alerts webhook <url>')),
+        on ? h('button', { class: 'btn sm', type: 'button', onclick: (e) => testAlert(e.currentTarget) }, 'Send test alert') : '');
+    })()),
     sec('Appearance', null, segmented('theme', [['auto', 'Auto'], ['light', 'Light'], ['dark', 'Dark']], theme, applyTheme, 'Theme')),
     sec('Keyboard shortcuts', null, h('dl', { class: 'kl' },
       h('dt', {}, h('kbd', {}, 'N')), h('dd', {}, 'New automation'),

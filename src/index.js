@@ -2,6 +2,7 @@
 import { handshake, verifySignature, extractComments, ingest, poll, sweepPending, refreshToken, graph, ledger, log, newBudget, _resetCaches } from "./core.js";
 import { admin } from "./admin.js";
 import { api } from "./api.js";
+import { watch } from "./alerts.js";
 import APP_HTML from "./app/app.html";
 
 const APP_HEADERS = {
@@ -54,11 +55,22 @@ async function authCallback(env, url) {
   return page("Connected ✅", detail);
 }
 
+// Alerts link to the dashboard; the cron has no request URL, so remember it (KV write only on change).
+let originSeen = null;
+async function rememberOrigin(env, origin) {
+  if (originSeen === origin) return;
+  if ((await env.KV.get("origin").catch(() => null)) !== origin) await env.KV.put("origin", origin);
+  originSeen = origin;
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     if (url.pathname === "/") return Response.redirect(`${url.origin}/app`, 302);
-    if (url.pathname === "/app" || url.pathname === "/app/") return new Response(APP_HTML, { headers: APP_HEADERS });
+    if (url.pathname === "/app" || url.pathname === "/app/") {
+      ctx.waitUntil(rememberOrigin(env, url.origin));
+      return new Response(APP_HTML, { headers: APP_HEADERS });
+    }
     if (url.pathname.startsWith("/api/")) {
       try {
         return await api(request, env, url);
@@ -112,6 +124,7 @@ export default {
         await refreshToken(env); // system-user token: health check; ig_login token: refresh when < 20 days left
         await ledger(env)("prune");
       }
+      await watch(env); // alerts on access down / back / failed DMs (no-op without an alert channel)
     };
     ctx.waitUntil(run().catch((e) => log("cron_error", { cron: event.cron, error: String(e) })));
   },

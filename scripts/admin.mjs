@@ -5,6 +5,7 @@ import { join } from "node:path";
 import {
   ROOT, WRANGLER_TOML, bold, dim, cyan, green, red, yellow, ok, bad, warn, die,
   confirm, tomlVar, setTomlVar, deploy, wrangler, api, openUrl, closePrompts,
+  putSecret,
 } from "./lib.mjs";
 
 const [cmd, ...args] = process.argv.slice(2);
@@ -212,6 +213,27 @@ const commands = {
     die("Usage: npm run admin -- config pull|push [file]");
   },
 
+  // alerts webhook URL → push alerts to a Discord/Slack incoming webhook
+  // alerts off          → stop webhook alerts
+  // alerts test         → send a test alert
+  async alerts([sub, value]) {
+    if (sub === "webhook") {
+      if (!/^https:\/\/\S+$/.test(value ?? "")) die("Usage: npm run admin -- alerts webhook https://discord.com/api/webhooks/…");
+      putSecret("ALERT_WEBHOOK_URL", value);
+      ok("Webhook alerts on");
+      await new Promise((r) => setTimeout(r, 12000)); // let the new secret reach the Worker
+    } else if (sub === "off") {
+      const r = wrangler(["secret", "delete", "ALERT_WEBHOOK_URL"], { input: "y\n" });
+      return r.code === 0 ? ok("Webhook alerts off. The dashboard banner still shows problems.") : die(r.out);
+    } else if (sub !== "test") {
+      console.log(`\n  The dashboard always shows a banner when Instagram access breaks.\n  For a push too, add a Discord or Slack incoming webhook:\n    ${bold("npm run admin -- alerts webhook <url>")}\n`);
+      return;
+    }
+    const r = await api("POST", "/api/alerts/test");
+    if (r.error) die(r.error);
+    r.sent ? ok("Test alert sent.") : bad(`The webhook didn't accept it (${r.channels?.map((c) => c.status).join(", ")}).`);
+  },
+
   async logs() {
     wrangler(["tail", "--format", "pretty"], { inherit: true });
   },
@@ -235,6 +257,7 @@ ${bold("npm run admin -- <command>")}
 
   ${bold("config pull")} | ${bold("push")}   edit rules locally in config.local.json, push live
   ${bold("status")}                recent sends and retries
+  ${bold("alerts")} webhook <url>|off|test  Discord/Slack alert when access breaks or DMs fail
   ${bold("logs")}                  live Worker logs
 `;
 

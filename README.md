@@ -172,6 +172,7 @@ The dashboard covers daily use. The CLI is still supported for scripting and for
 | `npm run admin -- config pull\|push` | Edit the v2 automations JSON locally |
 | `npm run admin -- status` | Recent sends and retries |
 | `npm run admin -- logs` | Live logs from the Worker (same as `npm run logs`) |
+| `npm run admin -- alerts webhook <url>` | Optional: a Discord or Slack message when Instagram access breaks, comes back, or DMs fail |
 
 **Updating** after a `git pull`: run `npm run deploy`. Your config, token and history are kept.
 

@@ -240,6 +240,7 @@ async function api(req, res, url) {
         pending: activity.filter((x) => ['new', 'dm_sent'].includes(x.stage)).length,
       },
       settings,
+      alerts: { webhook: false },
     });
   }
   if (path === '/api/automations' && method === 'GET') return json(res, 200, { automations: automations.map(withStats) });
@@ -295,6 +296,7 @@ async function api(req, res, url) {
     const limit = Math.min(Number(url.searchParams.get('limit')) || 50, 200);
     return json(res, 200, { items: [...activity].sort((a, b) => b.updated_at.localeCompare(a.updated_at)).slice(0, limit) });
   }
+  if (path === '/api/alerts/test' && method === 'POST') return json(res, 200, { sent: 1, channels: [{ channel: 'ntfy', ok: true }] });
   if (path === '/api/reconnect' && method === 'POST') {
     healthMode = 'ok';
     return json(res, 200, { link: 'https://www.facebook.com/dialog/oauth?client_id=mock&redirect_uri=http%3A%2F%2Flocalhost%3A8788%2Fapp' });

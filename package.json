@@ -19,7 +19,7 @@
     "admin": "node scripts/admin.mjs",
     "deploy": "npx --yes wrangler@4.160.0 deploy",
     "logs": "npx --yes wrangler@4.160.0 tail --format pretty",
-    "test": "node --import ./test/register-html.mjs --test test/worker.test.js test/api.test.js",
+    "test": "node --import ./test/register-html.mjs --test test/worker.test.js test/api.test.js test/alerts.test.js",
     "dev:ui": "node scripts/ui-mock.mjs"
   }
 }
