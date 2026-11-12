@@ -33,7 +33,7 @@ This takes about 30 minutes the first time, and most of it is clicking through M
 4. On **API setup with Unified login → 1. Configure your app**, click **Create new configuration**:
    - Access token: **System-user access token** (never expires)
    - Assets: **Instagram account**
-   - Permissions: keep `instagram_basic`, `instagram_manage_comments`, `instagram_manage_messages`
+   - Permissions: keep `instagram_basic`, `instagram_manage_comments`, `instagram_manage_messages`, and add `instagram_manage_engagement` (lets it like comments; optional)
 
    Save it and copy the **Configuration ID** shown on the card.
 5. **App settings → Basic:** copy the **App ID**, then click **Show** next to **App secret** and keep that page open.
@@ -184,6 +184,19 @@ npm run admin -- backfill                 # answer them, after you confirm
 </details>
 
 ---
+
+## Optional: liking comments
+
+To have the tool like each matched comment, your connection needs `instagram_manage_engagement`. Meta only offers it in the configuration once the permissions it depends on are on the app:
+
+1. **Use cases → Manage messaging & content on Instagram → Customize → Permissions and features.** Add `instagram_manage_engagement`, `pages_show_list` and `pages_read_engagement`.
+2. **API setup with Unified login →** your configuration → **Edit permissions.** Reload the page first, then tick the three permissions above and save.
+3. Reconnect: **Settings → Reconnect Instagram** in the dashboard, or `npm run admin -- connect`.
+4. `npm run admin -- check` stops showing "Liking is off".
+
+Then turn on **Like their comment** in any automation.
+
+If Meta won't let you add it to that configuration, you can make a separate Facebook-Login configuration with `instagram_manage_engagement`, put its ID in `wrangler.toml` as `LIKE_CONFIG_ID`, deploy, and run `npm run admin -- connect --likes`. The tool then uses that connection only for likes.
 
 ## Updating
 

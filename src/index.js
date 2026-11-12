@@ -1,4 +1,5 @@
 // Worker entry: webhook, OAuth callback, public pages, admin API, and cron.
+import { extractPostbacks, handlePostback } from "./gate.js";
 import { handshake, verifySignature, extractComments, ingest, poll, sweepPending, refreshToken, graph, ledger, log, newBudget, _resetCaches } from "./core.js";
 import { admin } from "./admin.js";
 import { api } from "./api.js";
@@ -21,7 +22,8 @@ export { Ledger } from "./ledger.js";
 
 async function authCallback(env, url) {
   const state = url.searchParams.get("state");
-  if (!state || !(await env.KV.get(`oauth_state:${state}`)))
+  const purpose = state ? await env.KV.get(`oauth_state:${state}`) : null; // "1" = main connection, "like" = like-only
+  if (!purpose)
     return page("Link expired", "<p>Create a fresh link with <code>npm run admin -- connect</code>.</p>", 400);
   await env.KV.delete(`oauth_state:${state}`);
 
@@ -39,6 +41,7 @@ async function authCallback(env, url) {
     log("oauth_exchange_failed", { status: res.status, error: data.error?.message });
     return page("Not connected", `<p>Token exchange failed: ${esc(data.error?.message ?? res.status)}</p>`, 502);
   }
+  if (purpose === "like") return likeConnected(env, data.access_token);
   // The token is stored server-side only; it is never shown in the browser or logs.
   await env.KV.put("token", JSON.stringify({ access_token: data.access_token, kind: "system_user", obtained_at: Date.now() }));
   _resetCaches();
@@ -53,6 +56,17 @@ async function authCallback(env, url) {
       : `<p>Token saved, but it can't reach account <code>${esc(env.IG_ID)}</code> yet: ${esc(me.error)}. Make sure you selected that Instagram account on the login screen.</p>`;
   }
   return page("Connected ✅", detail);
+}
+
+async function likeConnected(env, token) {
+  await env.KV.put("like_token", JSON.stringify({ access_token: token, obtained_at: Date.now() }));
+  _resetCaches();
+  log("oauth_like_connected");
+  const perms = await graph(env, "GET", "me/permissions", { token });
+  const granted = perms.ok ? perms.data.data.filter((p) => p.status === "granted").map((p) => p.permission) : [];
+  return granted.includes("instagram_manage_engagement")
+    ? page("Liking connected ✅", "<p>Matched comments will now get a like from your account. Your DM connection wasn't changed.</p>")
+    : page("Connected, but liking isn't allowed", `<p>This login didn't grant <code>instagram_manage_engagement</code>${perms.ok ? "" : ` (${esc(perms.error)})`}. Check the likes configuration in Meta and connect again.</p>`, 400);
 }
 
 // Alerts link to the dashboard; the cron has no request URL, so remember it (KV write only on change).
@@ -111,6 +125,7 @@ export default {
     // Answer 200 immediately; enqueue + send run after the response.
     // If the isolate dies mid-way, the 5-minute sweep retries queued items and the poll re-finds missed comments.
     if (comments.length) ctx.waitUntil(ingest(comments, env).catch((e) => log("ingest_error", { error: String(e) })));
+    for (const pb of extractPostbacks(payload, env.IG_ID)) ctx.waitUntil(handlePostback(env, pb).catch((e) => log("postback_error", { error: String(e) })));
     return new Response("EVENT_RECEIVED");
   },
 

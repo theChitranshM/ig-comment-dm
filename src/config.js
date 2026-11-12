@@ -15,6 +15,7 @@ export default {
       dm: "here's the guide 📘", // the private reply
       link: "https://example.com/guide", // added on its own line (optional)
       ack: "sent! check your dms 📩", // public reply, posted only after the DM succeeds (optional)
+      like: true, // like their comment after the DM succeeds
       all_posts: false, // true = every post (except exclude_media_ids)
       media_ids: [], // the posts it runs on
       allowed_at: {}, // when each post was added: older comments wait for an explicit backfill

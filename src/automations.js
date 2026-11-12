@@ -3,7 +3,8 @@
 // v2 config (KV key "config"):
 //   { version: 2, automations: [Automation], exclude_media_ids: [], skip_comment_ids: [], dry_run: false }
 // Automation:
-//   { id, name, enabled, keyword, aliases[], match, dm, link, ack,
+//   { id, name, enabled, keyword, aliases[], match, dm, link, ack, like,
+//     follow_gate, opener, opener_button, gate_text, gate_button,
 //     all_posts, all_posts_since, media_ids[], allowed_at: { [media_id]: iso }, created_at, updated_at }
 //   allowed_at records when each post was added — comments older than that only go out via backfill.
 
@@ -24,6 +25,12 @@ export function normalizeAutomation(a, fallbackTime = new Date(0).toISOString())
     dm: str(a.dm),
     link: str(a.link),
     ack: str(a.ack),
+    like: a.like === true, // like their comment once the DM lands (needs instagram_manage_engagement)
+    follow_gate: a.follow_gate === true, // DM a button; only followers get the link (see gate.js)
+    opener: str(a.opener),
+    opener_button: str(a.opener_button),
+    gate_text: str(a.gate_text),
+    gate_button: str(a.gate_button),
     all_posts: a.all_posts === true,
     all_posts_since: a.all_posts === true ? a.all_posts_since || a.created_at || fallbackTime : null,
     media_ids: ids(a.media_ids),
@@ -84,6 +91,8 @@ export function validateAutomation(a, others) {
   if (a.link && !/^https?:\/\/[^\s]+\.[^\s]+$/i.test(a.link)) return "The link must start with http:// or https://.";
   if ((a.link ? `${a.dm}\n${a.link}` : a.dm).length > 1000) return "The DM (including the link) must be 1000 characters or fewer.";
   if (a.ack.length > 300) return "Keep the public reply to 300 characters or fewer.";
+  if (a.opener.length > 600 || a.gate_text.length > 600) return "Keep follow-to-unlock messages to 600 characters or fewer.";
+  if ([...a.opener_button].length > 20 || [...a.gate_button].length > 20) return "Button labels can be at most 20 characters.";
   if (a.name.length > 80) return "Keep the name under 80 characters.";
   if (a.enabled) {
     const mine = triggers(a);

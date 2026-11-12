@@ -101,6 +101,14 @@ Then run `npm run admin -- logs` and have someone comment again. Every webhook c
 
 No `webhook` line at all means Meta never delivered it. The 5-minute poll still picks the comment up, as long as an enabled automation runs on its post. Polls don't log skips: they re-read the same comments every 5 minutes, so the log would fill with noise.
 
+### Follow to unlock: people tap the button and nothing happens
+Button taps arrive as `messaging_postbacks` webhooks. Run `npm run admin -- subscribe`, then `npm run admin -- check`; it warns if that field is missing. Logs show `unlocked`, `gate_sent`, or `follow_check_failed` for every tap. If Instagram won't say whether someone follows you, they get the link anyway rather than being stuck. If Instagram refuses the button message itself (`gate_dm_rejected`), the plain link is sent instead.
+
+### Comments aren't getting liked
+Liking needs the `instagram_manage_engagement` permission on your connection. Follow [SETUP: Optional: liking comments](SETUP.md#optional-liking-comments). `npm run admin -- check` shows the state of that connection.
+
+A failed like is logged as `like_failed` and never holds up the DM or the public reply. Comments from private accounts can't be liked.
+
 ### `dm_failed` in the logs
 - **One private reply per comment:** if another tool already DM'd from that comment, Instagram refuses a second one. The tool marks it failed and does **not** post the public reply.
 - **Temporary errors** (rate limits, 5xx) are retried automatically every 5 minutes, up to 5 attempts. Use `npm run admin -- status` to see retries.

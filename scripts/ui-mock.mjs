@@ -69,11 +69,11 @@ function seed() {
   automations = [
     { id: 'a_diwali', name: 'Diwali code', enabled: true, keyword: 'DIWALI', aliases: ['DEEPAWALI'], match: 'fuzzy',
       dm: "here's the code 🪔 the whole worker, readme included. fork it, break it, make it yours.",
-      link: 'https://github.com/theChitranshM/ig-comment-dm', ack: 'sent 🪔 check your dms', all_posts: false,
+      link: 'https://github.com/theChitranshM/ig-comment-dm', ack: 'sent 🪔 check your dms', like: true, all_posts: false,
       media_ids: [P(0), P(1), P(8)], created_at: iso(9 * DAY), updated_at: iso(2 * DAY) },
     { id: 'a_eye', name: 'Third Eye', enabled: true, keyword: 'EYE', aliases: [], match: 'exact',
       dm: 'the notebook that reads your git history like a horoscope. it is weirdly accurate.',
-      link: 'https://github.com/theChitranshM/third-eye', ack: 'check your dms 👁️', all_posts: false,
+      link: 'https://github.com/theChitranshM/third-eye', ack: 'check your dms 👁️', like: true, all_posts: false,
       media_ids: [P(3), P(10)], created_at: iso(6 * DAY), updated_at: iso(3 * DAY) },
     { id: 'a_orb', name: 'Fortune Orb', enabled: false, keyword: 'ORB', aliases: ['FORTUNE'], match: 'fuzzy',
       dm: 'your fortune is attached. results may vary, regex is not a prophet.',
@@ -194,7 +194,9 @@ function validate(a, id) {
 }
 const clean = (b, base = {}) => {
   const a = { ...base };
-  for (const k of ['name', 'dm', 'link', 'ack']) if (k in b) a[k] = String(b[k] ?? '').trim();
+  for (const k of ['name', 'dm', 'link', 'ack', 'opener', 'opener_button', 'gate_text', 'gate_button']) if (k in b) a[k] = String(b[k] ?? '').trim();
+  if ('like' in b) a.like = b.like === true;
+  if ('follow_gate' in b) a.follow_gate = b.follow_gate === true;
   if ('keyword' in b) a.keyword = String(b.keyword ?? '').trim().toUpperCase();
   if ('aliases' in b) a.aliases = (b.aliases || []).map((x) => String(x).trim().toUpperCase()).filter(Boolean);
   if ('match' in b) a.match = b.match === 'exact' ? 'exact' : 'fuzzy';

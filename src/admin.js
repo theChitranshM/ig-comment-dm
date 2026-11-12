@@ -1,6 +1,6 @@
 // /admin/* — owner-only operations, guarded by `Authorization: Bearer <ADMIN_KEY>`.
 // Driven by `npm run admin -- <command>` (scripts/admin.mjs); every route is also plain curl-able.
-import { graph, getConfig, ledger, poll, sweepPending, refreshToken, ingest, extractComments, _resetCaches } from "./core.js";
+import { graph, getLikeToken, getConfig, ledger, poll, sweepPending, refreshToken, ingest, extractComments, _resetCaches } from "./core.js";
 import { normalizeConfig, validateAutomation } from "./automations.js";
 
 const json = (data, status = 200) => Response.json(data, { status });
@@ -40,10 +40,17 @@ async function check(env, origin) {
     ? await graph(env, "GET", String(env.IG_ID), { query: { fields: "id,username" } })
     : { ok: false, error: "IG_ID not set — run: npm run admin -- set-ig-id <id>" };
   const perms = await graph(env, "GET", "me/permissions");
+  const likeToken = await getLikeToken(env);
+  if (likeToken) {
+    const lp = await graph(env, "GET", "me/permissions", { token: likeToken });
+    out.like_permissions = lp.ok ? lp.data.data.filter((p) => p.status === "granted").map((p) => p.permission) : lp.error;
+  }
   out.permissions = perms.ok ? perms.data.data.filter((p) => p.status === "granted").map((p) => p.permission) : perms.error;
   if (env.IG_ID) {
     const s = await graph(env, "GET", `${env.IG_ID}/subscribed_apps`);
-    out.account_subscribed = s.ok && (s.data.data ?? []).some((a) => String(a.app_id) === String(env.APP_ID) && (a.subscribed_fields ?? []).includes("comments"));
+    const mine = s.ok ? (s.data.data ?? []).find((a) => String(a.app_id) === String(env.APP_ID)) : null;
+    out.account_subscribed = Boolean(mine?.subscribed_fields?.includes("comments"));
+    out.account_postbacks = Boolean(mine?.subscribed_fields?.includes("messaging_postbacks"));
   }
   if (env.APP_ID && env.APP_SECRET) {
     const a = await appSubscriptions(env);
@@ -52,6 +59,7 @@ async function check(env, origin) {
       callback_ok: ig?.callback_url === `${origin}/webhook`,
       active: Boolean(ig?.active),
       comments_field: Boolean(ig?.fields?.some((f) => f.name === "comments")),
+      postbacks_field: Boolean(ig?.fields?.some((f) => f.name === "messaging_postbacks")),
     };
   }
   const cfg = await getConfig(env);
@@ -80,12 +88,14 @@ export async function admin(request, env, url) {
 
     // ---- connect (Unified login / Facebook Login for Business) ----
     case "POST /admin/connect-link": {
-      if (!env.APP_ID || !env.LOGIN_CONFIG_ID) return json({ error: "APP_ID and LOGIN_CONFIG_ID must be set in wrangler.toml" }, 400);
+      const forLikes = q.get("purpose") === "like";
+      const configId = forLikes ? env.LIKE_CONFIG_ID : env.LOGIN_CONFIG_ID;
+      if (!env.APP_ID || !configId) return json({ error: `APP_ID and ${forLikes ? "LIKE_CONFIG_ID" : "LOGIN_CONFIG_ID"} must be set in wrangler.toml` }, 400);
       const state = crypto.randomUUID();
-      await env.KV.put(`oauth_state:${state}`, "1", { expirationTtl: 900 });
+      await env.KV.put(`oauth_state:${state}`, forLikes ? "like" : "1", { expirationTtl: 900 });
       const u = new URL(`https://www.facebook.com/${v(env)}/dialog/oauth`);
       u.searchParams.set("client_id", env.APP_ID);
-      u.searchParams.set("config_id", env.LOGIN_CONFIG_ID);
+      u.searchParams.set("config_id", configId);
       u.searchParams.set("redirect_uri", `${url.origin}/auth/callback`);
       u.searchParams.set("response_type", "code");
       u.searchParams.set("override_default_response_type", "true");
@@ -96,9 +106,9 @@ export async function admin(request, env, url) {
     // ---- webhook subscriptions ----
     case "POST /admin/subscribe": { // account → app (comments) and app → callback (comments field)
       if (!env.IG_ID) return json({ error: "IG_ID not set — run: npm run admin -- set-ig-id <id>" }, 400);
-      const account = await graph(env, "POST", `${env.IG_ID}/subscribed_apps`, { query: { subscribed_fields: "comments" } });
+      const account = await graph(env, "POST", `${env.IG_ID}/subscribed_apps`, { query: { subscribed_fields: "comments,messaging_postbacks" } });
       const body = new URLSearchParams({
-        object: "instagram", callback_url: `${url.origin}/webhook`, fields: "comments",
+        object: "instagram", callback_url: `${url.origin}/webhook`, fields: "comments,messaging_postbacks",
         include_values: "true", verify_token: env.VERIFY_TOKEN, access_token: appToken(env),
       });
       const app = await (await fetch(`https://graph.facebook.com/${v(env)}/${env.APP_ID}/subscriptions`, { method: "POST", body })).json();
@@ -144,6 +154,13 @@ export async function admin(request, env, url) {
       return json(await refreshToken(env, { force: q.get("force") === "1" }));
 
     // ---- diagnostics + live testing ----
+    case "POST /admin/like": // like (or ?undo=1 unlike) one comment with the like token, for testing
+    case "DELETE /admin/like": {
+      const id = q.get("comment_id");
+      if (!/^\d{5,30}$/.test(id ?? "")) return json({ error: "comment_id required" }, 400);
+      const token = (await getLikeToken(env)) ?? undefined;
+      return json(await graph(env, request.method, `${env.IG_ID}/likes`, { body: { comment_id: id }, token }));
+    }
     case "GET /admin/graph": { // read-only Graph GET: ?path=...&fields=...
       const query = Object.fromEntries([...q].filter(([k]) => k !== "path"));
       return json(await graph(env, "GET", q.get("path") ?? "me", { query }));

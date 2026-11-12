@@ -56,7 +56,7 @@ async function saveConfig(env, cfg) {
 async function readBody(req) {
   try { return await req.json(); } catch { return null; }
 }
-const EDITABLE = ["name", "enabled", "keyword", "aliases", "match", "dm", "link", "ack", "all_posts", "media_ids"];
+const EDITABLE = ["name", "enabled", "keyword", "aliases", "match", "dm", "link", "ack", "like", "follow_gate", "opener", "opener_button", "gate_text", "gate_button", "all_posts", "media_ids"];
 const pick = (o) => Object.fromEntries(EDITABLE.filter((k) => o && k in o).map((k) => [k, o[k]]));
 
 function withStats(a, stats) {

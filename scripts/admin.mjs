@@ -70,10 +70,17 @@ const commands = {
     const need = ["instagram_basic", "instagram_manage_comments", "instagram_manage_messages"];
     const perms = Array.isArray(r.permissions) ? r.permissions : [];
     console.log(`  ${mark(need.every((p) => perms.includes(p)))} Permissions: ${Array.isArray(r.permissions) ? need.map((p) => (perms.includes(p) ? p : red(p))).join(", ") : r.permissions}`);
+    const likePerms = Array.isArray(r.like_permissions) ? r.like_permissions : null;
+    if (likePerms) console.log(`  ${mark(likePerms.includes("instagram_manage_engagement"))} Liking: separate connection ${likePerms.includes("instagram_manage_engagement") ? "can like comments" : "is missing instagram_manage_engagement"}`);
+    else if (r.like_permissions) console.log(`  ${mark(false)} Liking: ${r.like_permissions}. Run npm run admin -- connect --likes`);
+    else if (Array.isArray(r.permissions) && !perms.includes("instagram_manage_engagement"))
+      console.log(`  ● Liking is off: add instagram_manage_engagement to your configuration, then reconnect (docs/SETUP.md, "Optional: liking comments")`);
     console.log(`\n${bold("Webhooks")}`);
     console.log(`  ${mark(r.app_webhook?.callback_ok && r.app_webhook?.active)} App callback points at this Worker`);
     console.log(`  ${mark(r.app_webhook?.comments_field)} App subscribed to the "comments" field`);
     console.log(`  ${mark(r.account_subscribed)} Your account subscribed to the app`);
+    if (!r.app_webhook?.postbacks_field || !r.account_postbacks)
+      console.log(`  ● Follow to unlock needs button taps (messaging_postbacks): run npm run admin -- subscribe`);
     console.log(`\n${bold("Config")}`);
     const autos = r.config?.automations ?? [];
     for (const a of autos) console.log(`  ${a.enabled ? green("●") : dim("○")} ${a.name} ${dim(`(${a.keyword}) · ${a.posts === "all" ? "all posts" : `${a.posts} post(s)`}`)}`);
@@ -83,9 +90,12 @@ const commands = {
   },
 
   async connect() {
-    const r = await api("POST", "/admin/connect-link");
+    const likes = args.includes("--likes");
+    const r = await api("POST", `/admin/connect-link${likes ? "?purpose=like" : ""}`);
     if (!r.link) die(r.error ?? JSON.stringify(r));
-    console.log(`\n  Opening Meta's login. ${bold("Select your Instagram account")} when asked which assets to share.`);
+    console.log(likes
+      ? `\n  Opening Meta's login for ${bold("liking only")}. Select your Instagram account ${bold("and the Facebook Page linked to it")}. Your DM connection isn't touched.`
+      : `\n  Opening Meta's login. ${bold("Select your Instagram account")} when asked which assets to share.`);
     console.log(`  ${dim("Link (valid 15 min):")} ${cyan(r.link)}\n`);
     openUrl(r.link);
   },
@@ -243,7 +253,7 @@ const help = `
 ${bold("npm run admin -- <command>")}
 
   ${bold("check")}                 is everything wired up? (token, account, permissions, webhooks)
-  ${bold("connect")}               log in with Instagram (Unified login) and save the token
+  ${bold("connect")} [--likes]     log in with Instagram (Unified login) and save the token; --likes adds the optional like-only connection
   ${bold("set-ig-id")} <id>        save your Instagram account ID and redeploy
   ${bold("subscribe")}             subscribe your account + app to comment webhooks
 

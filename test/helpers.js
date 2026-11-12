@@ -117,11 +117,12 @@ export function changesPayload(value, entryId = IG_ID) {
 export function installGraph() {
   const realFetch = globalThis.fetch;
   const calls = [];
-  const queues = { dm: [], reply: [], refresh: [], comments: [], media: [], accounts: [] };
+  const queues = { dm: [], reply: [], like: [], profile: [], refresh: [], comments: [], media: [], accounts: [] };
   const g = {
     calls,
     comments: {},                // mediaId -> array of rows {id,text,timestamp,from}
     media: [],                   // rows for GET /<IG_ID>/media
+    follows: {},                 // IGSID -> true if they follow the account
     refreshResponse: { access_token: "newtok", token_type: "bearer", expires_in: 5184000 },
     // push one-shot override responses: {status, body} or "throw"
     failNext(kind, ...resps) { queues[kind].push(...resps); },
@@ -143,10 +144,12 @@ export function installGraph() {
     let m;
     if (method === "POST" && path === `/v27.0/${IG_ID}/messages`) kind = "dm";
     else if (method === "POST" && (m = /^\/v27\.0\/([^/]+)\/replies$/.exec(path))) kind = "reply";
+    else if (method === "POST" && path === `/v27.0/${IG_ID}/likes`) kind = "like";
     else if (method === "GET" && path === "/refresh_access_token") kind = "refresh";
     else if (method === "GET" && (m = /^\/v27\.0\/([^/]+)\/comments$/.exec(path))) kind = "comments";
     else if (method === "GET" && path === `/v27.0/${IG_ID}/media`) kind = "media";
     else if (method === "GET" && path === `/v27.0/${IG_ID}`) kind = "accounts";
+    else if (method === "GET" && (m = /^\/v27\.0\/(\d+)$/.exec(path)) && url.searchParams.get("fields") === "is_user_follow_business") kind = "profile";
     const call = { kind, host: url.host, method, path, query: Object.fromEntries(url.searchParams), body, auth: headers.get("authorization"), target: m?.[1] };
     calls.push(call);
     const q = queues[kind];
@@ -158,6 +161,8 @@ export function installGraph() {
     switch (kind) {
       case "dm": return R(200, { recipient_id: "555", message_id: "mid" });
       case "reply": return R(200, { id: "reply1" });
+      case "like": return R(200, { success: true });
+      case "profile": return R(200, { id: call.target, is_user_follow_business: g.follows[call.target] === true });
       case "refresh": return R(200, g.refreshResponse);
       case "comments": return R(200, { data: g.comments[call.target] ?? [] });
       case "media": return R(200, { data: g.media });

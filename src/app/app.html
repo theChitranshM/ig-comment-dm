@@ -306,6 +306,14 @@ main{max-width:960px;margin:0 auto;padding:32px 24px 96px}
 .bub{background:var(--ph-bubble);padding:9px 14px;border-radius:18px;overflow-wrap:anywhere;white-space:pre-wrap}
 .bub.a{border-bottom-left-radius:5px}
 .bub.ph-empty{color:var(--ph-mute)}
+.tcard{background:var(--ph-bubble);border-radius:18px 18px 18px 5px;padding:10px;display:flex;flex-direction:column;gap:8px}
+.tcard>span{padding:0 4px;white-space:pre-wrap;overflow-wrap:anywhere}
+.tcard>b{display:block;text-align:center;font-weight:600;background:var(--ph-bg);color:var(--ph-text);border-radius:10px;padding:8px 10px;font-size:13px}
+.mr.me{justify-content:flex-end}
+.bub.me{background:#6b4eff;color:#fff;border-bottom-right-radius:5px}
+.gate{margin-top:12px;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--sunk)}
+.gate .row2{display:grid;grid-template-columns:1fr 168px;gap:10px;align-items:start}
+@media (max-width:560px){.gate .row2{grid-template-columns:1fr}}
 .lcard{background:var(--ph-bubble);border-radius:5px 18px 18px 18px;padding:10px 14px;display:flex;gap:10px;align-items:center;text-decoration:none;color:inherit;min-width:0}
 .lcard>div{min-width:0;flex:1}
 .lcard b{display:block;font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -424,6 +432,7 @@ main{max-width:960px;margin:0 auto;padding:32px 24px 96px}
 'use strict';
 const GH = 'https://github.com/theChitranshM/ig-comment-dm';
 const DEFAULT_ACK = 'sent! check your dms';
+const GATE = { opener: "tap below and i'll send it over 👇", opener_button: 'Send me the link', gate_text: 'nearly there ✨ the link is just for my followers. follow me, then tap the button below.', gate_button: "I'm following" };
 const $ = (s, r = document) => r.querySelector(s);
 const root = $('#app');
 const S = {
@@ -907,7 +916,7 @@ function openRowMenu(btn, a, i, n) {
 }
 async function duplicateAutomation(a) {
   try {
-    const r = await api('POST', '/api/automations', { name: `${a.name} copy`, enabled: false, keyword: a.keyword, aliases: a.aliases, match: a.match, dm: a.dm, link: a.link, ack: a.ack, all_posts: a.all_posts, media_ids: a.media_ids });
+    const r = await api('POST', '/api/automations', { name: `${a.name} copy`, enabled: false, keyword: a.keyword, aliases: a.aliases, match: a.match, dm: a.dm, link: a.link, ack: a.ack, like: a.like, follow_gate: a.follow_gate, opener: a.opener, opener_button: a.opener_button, gate_text: a.gate_text, gate_button: a.gate_button, all_posts: a.all_posts, media_ids: a.media_ids });
     S.automations.push(r.automation); invalidatePosts(); S.ui.renderList?.(); loadOverview().catch(() => {});
     toast('Duplicated as a paused copy.', 'ok');
   } catch {}
@@ -1135,11 +1144,12 @@ function buildEditor(isNew, orig, presetPost, key) {
   const ed = S.editor;
   const d = {
     name: orig?.name || '', enabled: orig ? orig.enabled : true, keyword: orig?.keyword || '', aliases: [...(orig?.aliases || [])],
-    match: orig?.match || 'fuzzy', dm: orig?.dm || '', link: orig?.link || '', ack: isNew ? DEFAULT_ACK : (orig?.ack || ''),
+    match: orig?.match || 'fuzzy', dm: orig?.dm || '', link: orig?.link || '', ack: isNew ? DEFAULT_ACK : (orig?.ack || ''), like: isNew ? true : orig?.like === true,
+    follow_gate: orig?.follow_gate === true, opener: orig?.opener || '', opener_button: orig?.opener_button || '', gate_text: orig?.gate_text || '', gate_button: orig?.gate_button || '',
     all_posts: !!orig?.all_posts, media_ids: [...(orig?.media_ids || [])],
   };
   if (isNew && presetPost) d.media_ids = [presetPost];
-  const norm = () => JSON.stringify([d.name.trim(), d.enabled, d.keyword.trim().toUpperCase(), d.aliases, d.match, d.dm.trim(), d.link.trim(), d.ack.trim(), d.all_posts, [...d.media_ids].sort()]);
+  const norm = () => JSON.stringify([d.name.trim(), d.enabled, d.keyword.trim().toUpperCase(), d.aliases, d.match, d.dm.trim(), d.link.trim(), d.ack.trim(), d.like, d.follow_gate, d.opener.trim(), d.opener_button.trim(), d.gate_text.trim(), d.gate_button.trim(), d.all_posts, [...d.media_ids].sort()]);
   const snap = norm();
   const dirty = () => norm() !== snap;
   const account = S.overview?.account;
@@ -1191,6 +1201,19 @@ function buildEditor(isNew, orig, presetPost, key) {
   const linkErr = h('p', { class: 'err', id: 'f-link-e', hidden: true });
   const ack = h('textarea', { class: 'in', id: 'f-ack', rows: '2', placeholder: 'sent! check your dms', value: d.ack, 'aria-describedby': 'f-ack-e' });
   const ackErr = h('p', { class: 'err', id: 'f-ack-e', hidden: true }); const ackCount = h('span', { class: 'count' });
+  /* follow to unlock */
+  const gIn = (k, tag, extra = {}) => { const el = h(tag, { class: 'in', id: 'f-' + k, placeholder: GATE[k], value: d[k], ...extra }); el.addEventListener('input', () => { d[k] = el.value; sync(); }); return el; };
+  const gOpener = gIn('opener', 'textarea', { rows: '2' }), gOpenerBtn = gIn('opener_button', 'input', { maxlength: '20' });
+  const gText = gIn('gate_text', 'textarea', { rows: '2' }), gBtn = gIn('gate_button', 'input', { maxlength: '20' });
+  const gateBox = h('div', { class: 'gate', hidden: !d.follow_gate },
+    h('div', { class: 'row2' },
+      h('div', { class: 'field' }, h('label', { for: 'f-opener' }, 'First message'), gOpener),
+      h('div', { class: 'field' }, h('label', { for: 'f-opener_button' }, 'Button'), gOpenerBtn)),
+    h('div', { class: 'row2' },
+      h('div', { class: 'field', style: 'margin-bottom:0' }, h('label', { for: 'f-gate_text' }, 'If they don’t follow you yet'), gText),
+      h('div', { class: 'field', style: 'margin-bottom:0' }, h('label', { for: 'f-gate_button' }, 'Button'), gBtn)),
+    h('p', { class: 'help', style: 'margin:10px 0 0' }, 'Followers who tap the button get your message and link. Everyone else is asked to follow first, and the button checks again. Leave a field empty to use the grey text.'));
+  const gateSw = sw(d.follow_gate, 'Follow to unlock', (on) => { d.follow_gate = on; gateSw.setAttribute('aria-checked', String(on)); gateBox.hidden = !on; sync(); });
   /* posts */
   const pickHost = h('div', {}); const selCount = h('span', { class: 'mute num' });
   const postsSeg = segmented('scope', [['all', 'All posts'], ['pick', 'Choose posts']], d.all_posts ? 'all' : 'pick', (v) => { d.all_posts = v === 'all'; drawPicker(); sync(); }, 'Which posts');
@@ -1231,6 +1254,8 @@ function buildEditor(isNew, orig, presetPost, key) {
       scr = [
         h('div', { class: 'pt-top' }, ic('left', 20), h('span', { class: 'ring' }, pa()), h('div', { class: 'nm' }, user, h('small', {}, 'Instagram'))),
         h('div', { class: 'thread' }, h('div', { class: 'tstamp' }, 'Today 9:41 AM'),
+          d.follow_gate && h('div', { class: 'mr' }, pa('s'), h('div', { class: 'mc' }, h('div', { class: 'tcard' }, h('span', {}, d.opener.trim() || GATE.opener), h('b', {}, d.opener_button.trim() || GATE.opener_button)))),
+          d.follow_gate && h('div', { class: 'mr me', style: 'margin:6px 0' }, h('div', { class: 'mc' }, h('div', { class: 'bub me' }, d.opener_button.trim() || GATE.opener_button))),
           h('div', { class: 'mr' }, url ? h('span', { class: 'sp' }) : pa('s'), h('div', { class: 'mc' }, h('div', { class: 'bub' + (d.dm.trim() ? '' : ' ph-empty') + (url ? ' a' : '') }, d.dm.trim() || 'Your message shows up here.'))),
           url && h('div', { class: 'mr' }, pa('s'), h('div', { class: 'mc' }, h('div', { class: 'lcard' }, h('div', {}, h('b', {}, new URL(url).hostname.replace(/^www\./, '')), h('small', {}, url.replace(/^https?:\/\/(www\.)?/, ''))), ic('ext', 16)))),
           h('div', { class: 'dlv' }, 'Delivered')),
@@ -1258,6 +1283,7 @@ function buildEditor(isNew, orig, presetPost, key) {
   const setEn = (on) => { d.enabled = on; enSw.setAttribute('aria-checked', String(on)); sw2.setAttribute('aria-checked', String(on)); enLbl.textContent = on ? 'Live' : 'Paused'; sync(); };
   const enSw = sw(d.enabled, 'Enabled', setEn);
   const sw2 = sw(d.enabled, 'Enabled', setEn);
+  const likeSw = sw(d.like, 'Like their comment', (on) => { d.like = on; likeSw.setAttribute('aria-checked', String(on)); sync(); });
   const enLbl = h('span', {}, d.enabled ? 'Live' : 'Paused');
   const delBtn = !isNew && h('button', { class: 'btn danger', type: 'button', onclick: async () => {
     if (!await confirmDialog({ title: `Delete “${orig.name}”?`, body: 'Comments with this keyword stop triggering it. DMs already sent stay sent.', ok: 'Delete', danger: true })) return;
@@ -1289,8 +1315,17 @@ function buildEditor(isNew, orig, presetPost, key) {
         h('div', { class: 'sh' }, h('h3', {}, 'Message')),
         h('div', { class: 'field' }, h('label', { for: 'f-dm' }, 'Direct message', dmCount), dm, dmErr),
         h('div', { class: 'field' }, h('label', { for: 'f-link' }, 'Link', h('span', { class: 'mute' }, 'Optional')), link, linkErr),
-        h('div', { class: 'field', style: 'margin-bottom:0' }, h('label', { for: 'f-ack' }, 'Public reply', ackCount), ack, ackErr,
-          h('p', { class: 'help' }, 'Posted under their comment after the DM goes out. Leave it empty to stay quiet.'))),
+        h('div', { class: 'field' }, h('label', { for: 'f-ack' }, 'Public reply', ackCount), ack, ackErr,
+          h('p', { class: 'help' }, 'Posted under their comment after the DM goes out. Leave it empty to stay quiet.')),
+        h('div', { class: 'field', style: 'margin-bottom:0;display:flex;gap:12px;align-items:flex-start;justify-content:space-between' },
+          h('div', {}, h('div', { class: 'lbl', id: 'f-like' }, 'Like their comment'),
+            h('p', { class: 'help', style: 'margin:2px 0 0' }, 'Adds a like from your account after the DM goes out.')),
+          likeSw),
+        h('div', { class: 'field', style: 'margin:16px 0 0;display:flex;gap:12px;align-items:flex-start;justify-content:space-between' },
+          h('div', {}, h('div', { class: 'lbl', id: 'f-gate' }, 'Follow to unlock'),
+            h('p', { class: 'help', style: 'margin:2px 0 0' }, 'Their DM gets a button instead of the link. Only people who follow you get the link.')),
+          gateSw),
+        gateBox),
       h('section', {},
         h('div', { class: 'sh' }, h('h3', {}, 'Posts'), selCount),
         postsSeg, pickHost)),
@@ -1325,7 +1360,7 @@ function buildEditor(isNew, orig, presetPost, key) {
     if (d.link.trim() && !safeUrl(d.link.trim())) return fieldErr('Link must start with http:// or https://');
     if (full_dm().length > 1000) return fieldErr('The DM, including the link, can be at most 1000 characters.');
     if (d.ack.length > 300) return fieldErr('Public reply can be at most 300 characters.');
-    const payload = { name: d.name.trim() || keyword[0] + keyword.slice(1).toLowerCase(), enabled: d.enabled, keyword, aliases: d.aliases, match: d.match, dm: d.dm.trim(), link: d.link.trim(), ack: d.ack.trim(), all_posts: d.all_posts, media_ids: d.all_posts ? (orig?.media_ids || []) : d.media_ids };
+    const payload = { name: d.name.trim() || keyword[0] + keyword.slice(1).toLowerCase(), enabled: d.enabled, keyword, aliases: d.aliases, match: d.match, dm: d.dm.trim(), link: d.link.trim(), ack: d.ack.trim(), like: d.like, follow_gate: d.follow_gate, opener: d.opener.trim(), opener_button: d.opener_button.trim(), gate_text: d.gate_text.trim(), gate_button: d.gate_button.trim(), all_posts: d.all_posts, media_ids: d.all_posts ? (orig?.media_ids || []) : d.media_ids };
     ed.busy = true; saveBtn.disabled = saveTop.disabled = true;
     try {
       const r = isNew ? await api('POST', '/api/automations', payload, { silent: true }) : await api('PUT', `/api/automations/${encodeURIComponent(orig.id)}`, payload, { silent: true });

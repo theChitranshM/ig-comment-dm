@@ -6,7 +6,7 @@
 //
 // Record: { item, stage: new|dm_sent|done|done_noack|failed, attempts, leaseUntil, created, updated, note }
 
-const OPS = new Set(["enqueue", "begin", "advance", "release", "pending", "get", "status", "prune", "stats", "activity", "lookup"]);
+const OPS = new Set(["enqueue", "begin", "advance", "release", "pending", "get", "status", "prune", "stats", "activity", "lookup", "once"]);
 const SENT = new Set(["dm_sent", "done", "done_noack"]);
 const TERMINAL = new Set(["done", "done_noack", "failed"]);
 const LEASE_MS = 120_000;
@@ -138,8 +138,19 @@ export class Ledger {
     };
   }
 
+  // First time this key is seen? Used to act once per button tap (Meta retries webhooks).
+  async once({ key, now }) {
+    const k = `p:${key}`;
+    if (await this.storage.get(k)) return { first: false };
+    await this.storage.put(k, { created: now });
+    return { first: true };
+  }
+
   async prune({ now }) {
     let removed = 0;
+    for (const [k, rec] of await this.storage.list({ prefix: "p:" })) {
+      if (now - rec.created > KEEP_MS) { await this.storage.delete(k); removed++; }
+    }
     for (const [k, rec] of await this.storage.list({ prefix: "c:" })) {
       if (now - rec.created > KEEP_MS) { await this.storage.delete(k); removed++; }
     }

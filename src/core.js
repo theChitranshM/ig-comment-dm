@@ -1,4 +1,5 @@
 // Pure-ish logic, importable from Node tests (no cloudflare:* imports).
+import { openerMessage } from "./gate.js";
 import defaultConfig from "./config.js";
 import { normalizeConfig, runsOn, coveredSince } from "./automations.js";
 
@@ -163,7 +164,7 @@ export async function getConfig(env) {
   configCache = { value, until: Date.now() + 60_000 };
   return value;
 }
-export const _resetCaches = () => { configCache = null; tokenCache = null; };
+export const _resetCaches = () => { configCache = null; tokenCache = null; likeTokenCache = null; };
 
 let tokenCache = null;
 export async function getToken(env) {
@@ -173,6 +174,16 @@ export async function getToken(env) {
   if (!value) throw new Error("no access token: set secret IG_TOKEN or KV token");
   tokenCache = { value, until: Date.now() + 300_000 };
   return value;
+}
+
+// Optional second connection used only for liking comments, for setups whose main configuration
+// can't include instagram_manage_engagement. Kept apart so it never touches DMs. Falls back to the main token.
+let likeTokenCache = null;
+export async function getLikeToken(env) {
+  if (likeTokenCache && likeTokenCache.until > Date.now()) return likeTokenCache.value;
+  const rec = await env.KV.get("like_token", "json").catch(() => null);
+  likeTokenCache = { value: rec?.access_token ?? null, until: Date.now() + 300_000 };
+  return likeTokenCache.value;
 }
 
 const REFRESH_BEFORE_DAYS = 20;
@@ -217,10 +228,10 @@ async function refreshIgLoginToken(env, { force = false } = {}) {
 // ---------- Graph API ----------
 
 const TRANSIENT_CODES = new Set([1, 2, 4, 17, 32, 341, 613]);
-export async function graph(env, method, path, { query, body } = {}) {
+export async function graph(env, method, path, { query, body, token } = {}) {
   const url = new URL(`https://${env.GRAPH_HOST || "graph.facebook.com"}/${env.API_VERSION || "v27.0"}/${path}`);
   for (const [k, v] of Object.entries(query ?? {})) url.searchParams.set(k, v);
-  const init = { method, headers: { authorization: `Bearer ${await getToken(env)}` } };
+  const init = { method, headers: { authorization: `Bearer ${token ?? (await getToken(env))}` } };
   if (body) {
     init.headers["content-type"] = "application/json";
     init.body = JSON.stringify(body);
@@ -282,7 +293,7 @@ export function classify(c, config, env, { backfill = false, onlyAutomation = nu
 
 // ---------- processing ----------
 
-// Free-plan Workers allow ~50 outbound calls per invocation; one send costs ~5 (ledger + DM + reply).
+// Free-plan Workers allow ~50 outbound calls per invocation; one send costs ~6 (ledger + DM + like + reply).
 // Sends past the budget stay queued and go out on the next 5-minute sweep.
 export const newBudget = (env) => ({ sends: Number(env.MAX_SENDS_PER_RUN || 5) });
 
@@ -343,15 +354,25 @@ export async function processOne(commentId, env, config, call = ledger(env)) {
   if (!rule || rule.enabled === false) return finish(call, commentId, "failed", "automation removed or paused");
 
   if (lease.stage === "new") {
-    const dm = await graph(env, "POST", `${env.IG_ID}/messages`, {
-      body: { recipient: { comment_id: commentId }, message: { text: dmText(rule) } },
-    });
+    const message = rule.follow_gate ? openerMessage(rule) : { text: dmText(rule) };
+    let dm = await graph(env, "POST", `${env.IG_ID}/messages`, { body: { recipient: { comment_id: commentId }, message } });
+    if (rule.follow_gate && !dm.ok && !dm.transient) {
+      // Button rejected: send the plain link rather than nothing (a refused request doesn't use up the private reply).
+      log("gate_dm_rejected", { id: commentId, error: dm.error });
+      dm = await graph(env, "POST", `${env.IG_ID}/messages`, { body: { recipient: { comment_id: commentId }, message: { text: dmText(rule) } } });
+    }
     if (!dm.ok) {
       log("dm_failed", { id: commentId, status: dm.status, code: dm.code, error: dm.error, transient: dm.transient });
       return dm.transient ? release(call, commentId, dm.error) : finish(call, commentId, "failed", `dm: ${dm.error}`);
     }
     await call("advance", { id: commentId, stage: "dm_sent" });
     log("dm_sent", { id: commentId, keyword: rule.keyword, from: c.fromUsername });
+    // Best effort, once: a failed like never blocks the reply or triggers a retry.
+    if (rule.like) {
+      const like = await graph(env, "POST", `${env.IG_ID}/likes`, { body: { comment_id: commentId }, token: (await getLikeToken(env)) ?? undefined });
+      if (like.ok) log("liked", { id: commentId });
+      else log("like_failed", { id: commentId, status: like.status, code: like.code, error: like.error });
+    }
   }
 
   if (!rule.ack) return finish(call, commentId, "done");

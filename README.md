@@ -24,8 +24,9 @@ A self-hosted Instagram comment-to-DM tool with a web dashboard. Someone comment
 ## Why this one
 
 - **Exactly once, every time.** Meta retries webhooks for up to 36 hours, and polling re-reads old comments. Each comment is claimed atomically in a Durable Object, so nobody gets two DMs, even when the same event arrives three times in the same second.
-- **DM first, then the public reply.** The "check your dms" reply is posted only after the DM succeeds, so you never publicly promise a message that didn't go out.
+- **DM first, then the like and the public reply.** The "check your dms" reply is posted only after the DM succeeds, so you never publicly promise a message that didn't go out.
 - **One automation per job.** Each automation has its own keyword, message and posts, so the same keyword can send different links on different posts.
+- **Follow to unlock (optional).** The DM carries a button instead of the link. Tapping it checks whether they follow you: followers get the link, everyone else is asked to follow first, and an "I'm following" button checks again.
 - **Forgiving matching.** `GUIDE`, `guide pls`, `#guide`, `guidee`, `gude` and `G U I D E` all count, with no false hits like "misguided". You choose fuzzy or exact per keyword.
 - **Doesn't miss comments.** Webhooks deliver in about a second. A poll every 5 minutes and a daily sweep catch anything a webhook missed (downtime, a bad deploy), within Instagram's 7-day reply window. Trial reels work too.
 - **Safe by default.**
@@ -70,7 +71,7 @@ The full walkthrough, with every click, is **[docs/SETUP.md](docs/SETUP.md)**. I
 
 1. Open the dashboard and go to **Automations → New automation**.
 2. Set the **trigger**: a keyword such as `GUIDE`, plus any aliases. Leave matching on fuzzy unless you need exact spelling.
-3. Write the **message**: the DM, an optional link, and an optional public reply.
+3. Write the **message**: the DM, an optional link, an optional public reply, and whether to like their comment.
 4. Pick the **posts** it runs on, or choose all posts. The preview on the right shows the DM as people will see it.
 5. Use **Try a comment** to check a phrase, then save. New comments on those posts get the DM from now on.
 
@@ -103,6 +104,7 @@ npm run admin -- config push     # live within about a minute, no redeploy
       "dm": "here's the guide 📘",
       "link": "https://example.com/guide",
       "ack": "sent! check your dms 📩",
+      "like": true,
       "all_posts": false,
       "media_ids": ["<MEDIA_ID>"],
       "allowed_at": {}
@@ -127,6 +129,10 @@ npm run admin -- config push     # live within about a minute, no redeploy
 | `dm` | The private reply. Required. |
 | `link` | Optional. Added on its own line under `dm` |
 | `ack` | Optional public reply, posted only after the DM succeeds |
+| `follow_gate` | `true` sends a button first and gives the link only to people who follow you |
+| `opener`, `opener_button` | With `follow_gate`: the first DM and its button label (max 20 characters). Empty uses the default |
+| `gate_text`, `gate_button` | With `follow_gate`: what non-followers see, and the re-check button. Empty uses the default |
+| `like` | `true` likes their comment from your account after the DM succeeds. Needs the optional like connection ([SETUP](docs/SETUP.md#optional-liking-comments)) |
 | `all_posts` | `true` runs on every post except `exclude_media_ids` |
 | `media_ids` | The posts it runs on when `all_posts` is `false` |
 | `allowed_at` | When each post was added. Comments older than this wait for a backfill. The CLI and dashboard set it for you. |
@@ -223,7 +229,7 @@ The dashboard's JSON API is documented in [docs/API.md](docs/API.md). Security d
 npm test
 ```
 
-There are no dependencies. `npm test` runs 190 tests covering:
+There are no dependencies. `npm test` runs 212 tests covering:
 - signature checks and both webhook payload shapes
 - fuzzy and exact matching
 - the self filter and switch-on safety

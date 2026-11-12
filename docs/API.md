@@ -31,6 +31,10 @@ The dashboard at `/app` is a single page served by the Worker. It talks to `/api
   "dm": "here's the code 🪔 build your own",
   "link": "https://github.com/…",   // optional, "" if none
   "ack": "sent 🪔 check your dms",  // optional public reply, "" if none
+  "like": true,                      // like the comment after the DM succeeds
+  "follow_gate": false,              // DM a button; only followers get the link
+  "opener": "", "opener_button": "", // follow_gate: first DM + button ("" = default)
+  "gate_text": "", "gate_button": "",// follow_gate: message for non-followers + re-check button
   "all_posts": false,               // true = every post except settings.exclude_media_ids (including future posts)
   "media_ids": ["1792…", "1819…"],  // posts it runs on when all_posts is false
   "created_at": "2026-11-11T03:00:00.000Z",

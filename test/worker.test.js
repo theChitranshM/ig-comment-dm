@@ -459,3 +459,167 @@ describe("admin", () => {
     assert.equal(bad.status, 400);
   });
 });
+
+describe("like the comment", () => {
+  const withLike = async () => {
+    const cfg = JSON.parse(await env.KV.get("config"));
+    cfg.rules[0].like = true; // v1 rules migrate with their fields intact
+    await env.KV.put("config", JSON.stringify(cfg));
+    _resetCaches();
+  };
+  const likes = () => g.byKind("like");
+
+  test("off by default: no like call", async () => {
+    await hook(changesPayload(commentValue({ id: "L0" })));
+    assert.equal(g.dms.length, 1);
+    assert.equal(likes().length, 0);
+  });
+  test("on: likes after the DM, before the public reply", async () => {
+    await withLike();
+    await hook(changesPayload(commentValue({ id: "L1" })));
+    assert.equal(likes().length, 1);
+    assert.deepEqual(likes()[0].body, { comment_id: "L1" });
+    assert.equal(likes()[0].auth, "Bearer tok");
+    assert.ok(g.calls.indexOf(g.dms[0]) < g.calls.indexOf(likes()[0]), "DM before like");
+    assert.ok(g.calls.indexOf(likes()[0]) < g.calls.indexOf(g.replies[0]), "like before reply");
+    assert.equal(stageOf("L1"), "done");
+  });
+  test("failed DM → no like", async () => {
+    await withLike();
+    g.failNext("dm", { status: 400, body: { error: { message: "bad", code: 100 } } });
+    await hook(changesPayload(commentValue({ id: "L2" })));
+    assert.equal(likes().length, 0);
+  });
+  test("failed like (e.g. missing permission) never blocks the reply or retries", async () => {
+    await withLike();
+    g.failNext("like", { status: 403, body: { error: { message: "(#10) needs instagram_manage_engagement", code: 10 } } });
+    await hook(changesPayload(commentValue({ id: "L3" })));
+    assert.equal(g.replies.length, 1);
+    assert.equal(stageOf("L3"), "done");
+    await cron("*/5 * * * *");
+    assert.equal(likes().length, 1);
+    assert.equal(g.dms.length, 1);
+  });
+  test("ack retry does not like twice", async () => {
+    await withLike();
+    g.failNext("reply", { status: 500, body: { error: { message: "oops" } } });
+    await hook(changesPayload(commentValue({ id: "L4" })));
+    await cron("*/5 * * * *");
+    assert.equal(g.replies.length, 2);
+    assert.equal(likes().length, 1);
+    assert.equal(stageOf("L4"), "done");
+  });
+});
+
+describe("follow to unlock", () => {
+  const gateOn = async (extra = {}) => {
+    const cfg = JSON.parse(await env.KV.get("config"));
+    Object.assign(cfg.rules[0], { follow_gate: true, ...extra });
+    await env.KV.put("config", JSON.stringify(cfg));
+    _resetCaches();
+  };
+  const tap = (payload, { mid = "PB1", sender = "777" } = {}) =>
+    hook({ object: "instagram", entry: [{ id: IG_ID, time: 1, messaging: [{ sender: { id: sender }, recipient: { id: IG_ID }, timestamp: 1, postback: { mid, title: "x", payload } }] }] });
+  const sends = () => g.dms.filter((d) => d.body.recipient.id);
+
+  test("comment gets a button DM, not the link; ack still posts", async () => {
+    await gateOn();
+    await hook(changesPayload(commentValue({ id: "G1" })));
+    const m = g.dms[0].body.message;
+    assert.equal(m.attachment.payload.template_type, "button");
+    assert.equal(m.attachment.payload.buttons[0].type, "postback");
+    assert.equal(m.attachment.payload.buttons[0].payload, "unlock:a_diwali:1");
+    assert.doesNotMatch(JSON.stringify(m), /hands-on-fire/);
+    assert.equal(g.replies.length, 1);
+    assert.equal(stageOf("G1"), "done");
+  });
+  test("custom opener text and button label are used", async () => {
+    await gateOn({ opener: "click below to get the guide", opener_button: "Yes! I want it" });
+    await hook(changesPayload(commentValue({ id: "G1b" })));
+    const p = g.dms[0].body.message.attachment.payload;
+    assert.equal(p.text, "click below to get the guide");
+    assert.equal(p.buttons[0].title, "Yes! I want it");
+  });
+  test("button rejected → falls back to the plain link once", async () => {
+    await gateOn();
+    g.failNext("dm", { status: 400, body: { error: { message: "Invalid parameter", code: 100 } } });
+    await hook(changesPayload(commentValue({ id: "G2" })));
+    assert.equal(g.dms.length, 2);
+    assert.deepEqual(g.dms[1].body.message, { text: DIWALI_DM });
+    assert.equal(stageOf("G2"), "done");
+  });
+  test("follower taps → gets the link", async () => {
+    await gateOn();
+    g.follows["777"] = true;
+    await tap("unlock:a_diwali:1");
+    assert.equal(g.byKind("profile").length, 1);
+    assert.equal(sends().length, 1);
+    assert.deepEqual(sends()[0].body, { recipient: { id: "777" }, message: { text: DIWALI_DM } });
+  });
+  test("non-follower taps → follow-first message with an I'm following button; after following → link", async () => {
+    await gateOn();
+    await tap("unlock:a_diwali:1", { mid: "PB2" });
+    const p = sends()[0].body.message.attachment.payload;
+    assert.match(p.text, /follow/);
+    assert.equal(p.buttons[0].payload, "unlock:a_diwali:2");
+    await tap("unlock:a_diwali:2", { mid: "PB3" });
+    assert.match(sends()[1].body.message.attachment.payload.text, /can't see the follow yet/);
+    g.follows["777"] = true;
+    await tap("unlock:a_diwali:2", { mid: "PB4" });
+    assert.deepEqual(sends()[2].body.message, { text: DIWALI_DM });
+  });
+  test("a retried webhook for the same tap acts once", async () => {
+    await gateOn();
+    g.follows["777"] = true;
+    await tap("unlock:a_diwali:1", { mid: "PB5" });
+    await tap("unlock:a_diwali:1", { mid: "PB5" });
+    assert.equal(sends().length, 1);
+  });
+  test("follow check unavailable → lets them through", async () => {
+    await gateOn();
+    g.failNext("profile", { status: 400, body: { error: { message: "nope", code: 100 } } });
+    await tap("unlock:a_diwali:1", { mid: "PB6" });
+    assert.deepEqual(sends()[0].body.message, { text: DIWALI_DM });
+  });
+  test("ignores own echoes, foreign payloads, paused automations and preview mode", async () => {
+    await gateOn();
+    g.follows["777"] = true;
+    await tap("unlock:a_diwali:1", { mid: "E1", sender: IG_ID });
+    await tap("something:else", { mid: "E2" });
+    await tap("unlock:a_nope:1", { mid: "E3" });
+    await gateOn({ enabled: false });
+    await tap("unlock:a_diwali:1", { mid: "E4" });
+    await gateOn({ enabled: true });
+    const cfg = JSON.parse(await env.KV.get("config")); cfg.dry_run = true; await env.KV.put("config", JSON.stringify(cfg)); _resetCaches();
+    await tap("unlock:a_diwali:1", { mid: "E5" });
+    assert.equal(sends().length, 0);
+  });
+});
+
+describe("like-only connection", () => {
+  test("likes use the separate like token when connected; DMs keep the main token", async () => {
+    await env.KV.put("like_token", JSON.stringify({ access_token: "liketok" }));
+    const cfg = JSON.parse(await env.KV.get("config")); cfg.rules[0].like = true; await env.KV.put("config", JSON.stringify(cfg)); _resetCaches();
+    await hook(changesPayload(commentValue({ id: "LT1" })));
+    assert.equal(g.byKind("like")[0].auth, "Bearer liketok");
+    assert.equal(g.dms[0].auth, "Bearer tok");
+    assert.equal(g.replies[0].auth, "Bearer tok");
+  });
+  test("like-only OAuth callback stores like_token, never touches the main token", async () => {
+    await env.KV.put("oauth_state:S1", "like");
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = async (input, init) => {
+      const u = String(input instanceof Request ? input.url : input);
+      if (u.includes("/oauth/access_token")) return Response.json({ access_token: "newlike" });
+      if (u.includes("/me/permissions")) return Response.json({ data: [{ permission: "instagram_manage_engagement", status: "granted" }] });
+      return realFetch(input, init);
+    };
+    try {
+      const res = await worker.fetch(new Request("https://x/auth/callback?state=S1&code=abc"), env, ctx);
+      assert.equal(res.status, 200);
+      assert.match(await res.text(), /Liking connected/);
+    } finally { globalThis.fetch = realFetch; }
+    assert.equal(JSON.parse(await env.KV.get("like_token")).access_token, "newlike");
+    assert.notEqual(JSON.parse((await env.KV.get("token")) ?? "{}").access_token, "newlike");
+  });
+});

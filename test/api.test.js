@@ -1254,7 +1254,7 @@ describe("contract spot checks (docs/API.md)", () => {
   test("Automation shape has exactly the documented fields", async () => {
     await putV2([]);
     const a = (await req("POST", "/api/automations", { body: { keyword: "K", dm: "d" } })).json.automation;
-    assert.deepEqual(Object.keys(a).sort(), ["ack", "aliases", "all_posts", "created_at", "dm", "enabled", "id", "keyword", "link", "match", "media_ids", "name", "stats", "updated_at"]);
+    assert.deepEqual(Object.keys(a).sort(), ["ack", "aliases", "all_posts", "created_at", "dm", "enabled", "follow_gate", "gate_button", "gate_text", "id", "keyword", "like", "link", "match", "media_ids", "name", "opener", "opener_button", "stats", "updated_at"]);
   });
   test("Activity item has exactly the documented fields", async () => {
     await putV2([mk({ keyword: "ONE" })]);
